@@ -5,16 +5,17 @@ import debug from 'debug';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
-import { init, createNew, push, showStats } from './commands/index.js';
+import { init, createNew, push, showStats, generateDiagrams } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const help = `Usage: dev <init|new|push|stats> [options]
+const help = `Usage: dev <init|new|push|stats|diaggen> [options]
 
 Commands:
   i, init               Init current dir as an article repository
     -p, --pull          Pull your articles from dev.to
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
+  d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
@@ -85,6 +86,11 @@ export async function run(args: string[]) {
     case 'n':
     case 'new': {
       return createNew(parameters[0]);
+    }
+
+    case 'd':
+    case 'diaggen': {
+      return generateDiagrams(parameters);
     }
 
     case 'p':

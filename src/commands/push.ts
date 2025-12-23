@@ -17,6 +17,7 @@ import { getAllArticles, updateRemoteArticle } from '../api.js';
 import { getBranch, getRepository } from '../repo.js';
 import { SyncStatus, PublishedStatus } from '../status.js';
 import { createSpinner } from '../spinner.js';
+import { replaceDiagramsInArticle } from '../diagram.js';
 import { type Article, type Repository } from '../models.js';
 
 const debug = Debug('push');
@@ -90,7 +91,15 @@ async function processArticles(
   options: Partial<PushOptions>
 ): Promise<PushResult[]> {
   const processArticle = async (article: Article) => {
-    let newArticle = prepareArticleForDevto(article, repository, branch);
+    // Replace diagrams with images before processing (in memory only)
+    let articleWithImages = article;
+    try {
+      articleWithImages = await replaceDiagramsInArticle(article);
+    } catch (error) {
+      debug('Warning: Could not replace diagrams in article %s: %s', article.file, String(error));
+    }
+
+    let newArticle = prepareArticleForDevto(articleWithImages, repository, branch);
     const needsUpdate = checkIfArticleNeedsUpdate(remoteArticles, newArticle);
     let status = newArticle.hasChanged ? SyncStatus.reconciled : SyncStatus.upToDate;
     let updateResult = null;
@@ -102,7 +111,18 @@ async function processArticles(
 
         if (!options.dryRun && !offlineImage) {
           updateResult = await updateRemoteArticle(newArticle, options.devtoKey!);
-          newArticle = await updateLocalArticle(article, updateResult);
+          // Update metadata on the ORIGINAL article (with diagrams), not the modified one
+          const updatedOriginalArticle = await updateLocalArticle(article, updateResult);
+
+          // Save the original article with updated metadata
+          if (updateResult) {
+            try {
+              await saveArticleToFile(updatedOriginalArticle);
+            } catch (error) {
+              debug('Cannot save article "%s": %s', updatedOriginalArticle.data.title, String(error));
+              status = SyncStatus.outOfSync;
+            }
+          }
         }
 
         if (offlineImage) {
@@ -115,18 +135,6 @@ async function processArticles(
         debug('Article update failed: %s', String(error));
         status = SyncStatus.failed;
         errors.push(`Update failed: ${String(error)}`);
-      }
-    }
-
-    if (updateResult || newArticle.hasChanged) {
-      try {
-        debug('Article "%s" has pending changes', newArticle.data.title);
-        if (!options.dryRun) {
-          await saveArticleToFile(newArticle);
-        }
-      } catch (error) {
-        debug('Cannot save article "%s": %s', newArticle.data.title, String(error));
-        status = SyncStatus.outOfSync;
       }
     }
 
@@ -227,21 +235,21 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     }
 
     return results;
-    } catch (error) {
-      spinner.stop();
-      process.exitCode = -1;
-      console.error(chalk.red(`Error: ${(error as Error).message}`));
-      console.error('Push failed');
+  } catch (error) {
+    spinner.stop();
+    process.exitCode = -1;
+    console.error(chalk.red(`Error: ${(error as Error).message}`));
+    console.error('Push failed');
 
-      // Check if it's a validation error from dev.to
-      if ((error as any)?.response?.statusCode === 422) {
-        const responseBody = (error as any)?.response?.body;
-        if (responseBody?.error) {
-          console.error(chalk.red(`Dev.to validation error: ${responseBody.error}`));
-          console.error('Please check your article markdown for syntax errors, especially image URLs.');
-        }
+    // Check if it's a validation error from dev.to
+    if ((error as any)?.response?.statusCode === 422) {
+      const responseBody = (error as any)?.response?.body;
+      if (responseBody?.error) {
+        console.error(chalk.red(`Dev.to validation error: ${responseBody.error}`));
+        console.error('Please check your article markdown for syntax errors, especially image URLs.');
       }
-
-      return null;
     }
+
+    return null;
+  }
 }

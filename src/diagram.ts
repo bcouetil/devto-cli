@@ -23,7 +23,10 @@ const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'bl
 
 // Configure proxy for corporate environments
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
-const proxyAgent = proxyUrl ? new HttpsProxyAgent({ proxy: proxyUrl }) : undefined;
+const proxyAgent = proxyUrl ? new HttpsProxyAgent({
+  proxy: proxyUrl,
+  rejectUnauthorized: false // For corporate proxies with self-signed certificates
+}) : undefined;
 
 /**
  * Add a white background to a PNG image with transparency
@@ -130,18 +133,20 @@ export async function generateDiagramImage(
   }
 
   try {
-    // Encode diagram content for Kroki
-    const compressed = pako.deflate(diagram.content, { level: 9 });
-    const encoded = Buffer.from(compressed)
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_');
-
-    // Request image from Kroki
-    const url = `${KROKI_URL}/${diagram.type}/png/${encoded}`;
-    debug('Requesting diagram from Kroki: %s', url);
+    // Normalize line endings to LF (Unix style) for Kroki
+    const normalizedContent = diagram.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Use POST method to avoid URL length limits
+    const url = `${KROKI_URL}/${diagram.type}/png`;
+    debug('Requesting diagram from Kroki (POST): %s', url);
+    debug('Diagram content length: %d bytes', normalizedContent.length);
 
     const requestOptions: any = {
+      method: 'POST',
+      body: normalizedContent,
+      headers: {
+        'Content-Type': 'text/plain'
+      },
       responseType: 'buffer',
       timeout: {
         request: 30000
@@ -156,7 +161,6 @@ export async function generateDiagramImage(
 
     if (proxyAgent) {
       requestOptions.agent = { https: proxyAgent };
-      debug('Using proxy agent');
     }
 
     const response = await got(url, requestOptions);
@@ -171,9 +175,18 @@ export async function generateDiagramImage(
     debug('Generated diagram image: %s', outputPath);
     return outputPath;
   } catch (error: any) {
+    // Provide helpful hint for EACCES errors (typically proxy issues)
+    if (error?.code === 'EACCES') {
+      console.error('\n⚠️  Access denied (EACCES) when connecting to Kroki.io');
+      console.error('💡 If you are behind a corporate proxy, make sure HTTPS_PROXY is set:');
+      console.error('   PowerShell: $env:HTTPS_PROXY = "http://proxy.example.com:3131"');
+      console.error('   Bash/Zsh:   export HTTPS_PROXY="http://proxy.example.com:3131"\n');
+    }
+    
     const errorMessage = error?.response?.statusCode
       ? `HTTP ${error.response.statusCode}: ${error.response.statusMessage || 'Unknown error'}`
       : error?.message || String(error);
+    debug('Full error details: %O', error);
     throw new Error(`Failed to generate diagram image for "${diagram.name}": ${errorMessage}`);
   }
 }

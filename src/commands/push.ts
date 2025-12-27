@@ -235,9 +235,18 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     }
 
     return results;
-  } catch (error) {
+  } catch (error: any) {
     spinner.stop();
     process.exitCode = -1;
+
+    // Provide helpful hint for EACCES errors (typically proxy issues)
+    if (error?.code === 'EACCES') {
+      console.error('\n⚠️  Access denied (EACCES) when connecting to dev.to or GitHub');
+      console.error('💡 If you are behind a corporate proxy, make sure HTTPS_PROXY is set:');
+      console.error('   PowerShell: $env:HTTPS_PROXY = "http://proxy.example.com:3131"');
+      console.error('   Bash/Zsh:   export HTTPS_PROXY="http://proxy.example.com:3131"\n');
+    }
+
     console.error(chalk.red(`Error: ${(error as Error).message}`));
     console.error('Push failed');
 

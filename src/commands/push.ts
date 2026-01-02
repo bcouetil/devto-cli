@@ -131,10 +131,23 @@ async function processArticles(
         } else {
           status = newArticle.data.id ? SyncStatus.updated : SyncStatus.created;
         }
-      } catch (error) {
+      } catch (error: any) {
         debug('Article update failed: %s', String(error));
         status = SyncStatus.failed;
-        errors.push(`Update failed: ${String(error)}`);
+
+        // Extract detailed error information
+        let errorMessage = String(error);
+        if (error?.response?.statusCode) {
+          errorMessage = `HTTP ${error.response.statusCode} - ${error.response.statusMessage || 'Error'}`;
+          if (error.response.body) {
+            const body = typeof error.response.body === 'string'
+              ? error.response.body
+              : JSON.stringify(error.response.body, null, 2);
+            errorMessage += `\nResponse: ${body}`;
+          }
+        }
+
+        errors.push(`Update failed: ${errorMessage}`);
       }
     }
 

@@ -48,6 +48,7 @@ function generateFrontMatterMetadata(remoteData: RemoteArticleData): ArticleMeta
     description: frontmatter.description ? null : remoteData.description,
     tags: frontmatter.tags ? null : remoteData.tag_list.join(', '),
     cover_image: frontmatter.cover_image ? null : remoteData.cover_image,
+    organization: null,  // Never auto-generate organization field
     canonical_url:
       frontmatter.canonical_url || remoteData.url === remoteData.canonical_url ? null : remoteData.canonical_url,
     published: remoteData.published ? true : null,
@@ -88,7 +89,11 @@ export async function saveArticleToFile(article: Article) {
       throw new Error('no filename provided');
     }
 
-    const markdown = matter.stringify(article.content, article.data, { lineWidth: -1 } as any);
+    // Create a copy of article data without organization_id (only used for API, not saved)
+    const dataToSave = { ...article.data };
+    delete dataToSave.organization_id;
+
+    const markdown = matter.stringify(article.content, dataToSave, { lineWidth: -1 } as any);
     await fs.ensureDir(path.dirname(article.file));
     await fs.writeFile(article.file, markdown);
     debug('Saved article "%s" to file "%s"', article.data.title, article.file);
@@ -182,7 +187,7 @@ export function checkIfArticleNeedsUpdate(remoteArticles: Article[], article: Ar
   return !areArticlesEqual(remoteArticle, article);
 }
 
-export async function createNewArticle(file: string) {
+export async function createNewArticle(file: string, organization?: string | null) {
   const article = {
     file,
     content: `My article content`,
@@ -192,7 +197,8 @@ export async function createNewArticle(file: string) {
       tags: '',
       cover_image: '',
       canonical_url: null,
-      published: false
+      published: false,
+      organization: organization || '<none>'
     }
   };
 

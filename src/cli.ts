@@ -85,7 +85,7 @@ export async function run(args: string[]) {
 
     case 'n':
     case 'new': {
-      return createNew(parameters[0]);
+      return createNew(parameters[0], options.token);
     }
 
     case 'd':
@@ -98,6 +98,7 @@ export async function run(args: string[]) {
       return push(parameters, {
         devtoKey: options.token,
         repo: options.repo,
+        useOrganization: options['use-organization'] !== false,
         branch: options.branch,
         dryRun: options['dry-run'],
         reconcile: options.reconcile,

@@ -1,6 +1,7 @@
 import process from 'node:process';
 import Debug from 'debug';
 import chalk from 'chalk';
+import dotenv from 'dotenv';
 import { table, getBorderCharacters } from 'table';
 import pMap from 'p-map';
 import {
@@ -13,7 +14,7 @@ import {
   reconcileLocalArticles,
   checkArticleForOfflineImages
 } from '../article.js';
-import { getAllArticles, updateRemoteArticle } from '../api.js';
+import { getAllArticles, updateRemoteArticle, getUserOrganizations, getOrganizationId } from '../api.js';
 import { getBranch, getRepository } from '../repo.js';
 import { SyncStatus, PublishedStatus } from '../status.js';
 import { createSpinner } from '../spinner.js';
@@ -29,6 +30,7 @@ export type PushOptions = {
   dryRun: boolean;
   reconcile: boolean;
   checkImages: boolean;
+  useOrganization: boolean;
 };
 
 export type PushResult = {
@@ -211,6 +213,10 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
   const spinner = createSpinner(debug);
 
   try {
+    // Reload .env from current directory to get DEVTO_ORG and other local settings
+    dotenv.config();
+    debug('Loaded .env from %s', process.cwd());
+
     const repository = await getRepository(options.repo);
     if (!repository) {
       process.exitCode = -1;
@@ -247,6 +253,42 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
 
     spinner.text = 'Retrieving articles from dev.to…';
     spinner.start();
+
+    // Get organization info if useOrganization is enabled
+    let orgInfo: { id: number; username: string } | null = null;
+    if (options.useOrganization) {
+      spinner.text = 'Getting organization info…';
+      orgInfo = await getUserOrganizations(options.devtoKey);
+      if (orgInfo) {
+        debug('Will use organization: %s (ID: %s)', orgInfo.username, orgInfo.id);
+        // Process all articles to set organization info
+        let updatedCount = 0;
+        for (const article of articles) {
+          // Set organization only for articles that don't have it
+          // '<none>' is an explicit choice by the author and should never be replaced
+          if (!article.data.organization) {
+            article.data.organization = orgInfo.username;
+            if (!options.dryRun) {
+              await saveArticleToFile(article);
+            }
+            updatedCount++;
+          }
+
+          // Resolve organization_id from organization name for API calls (not saved to file)
+          // Skip if organization is explicitly set to '<none>'
+          if (article.data.organization && article.data.organization !== '<none>') {
+            const articleOrgId = await getOrganizationId(article.data.organization, options.devtoKey);
+            if (articleOrgId) {
+              article.data.organization_id = articleOrgId;
+            }
+          }
+        }
+        if (updatedCount > 0) {
+          console.info(`Added organization ${chalk.cyan(orgInfo.username)} to ${chalk.green(updatedCount)} new article(s)`);
+        }
+      }
+    }
+
     const remoteArticles = await getRemoteArticles(options.devtoKey);
 
     if (options.reconcile) {

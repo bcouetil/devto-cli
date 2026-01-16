@@ -9,6 +9,8 @@ export type ArticleMetadata = Partial<{
   id: number | null;
   date: string | null;
   link: string | null;
+  organization_id: number | null;
+  organization: string | null;
 }>;
 
 export type Article = {
@@ -33,6 +35,7 @@ export type RemoteArticleData = {
   page_views_count: number;
   positive_reactions_count: number;
   comments_count: number;
+  organization_id: number | null;
 };
 
 export type ArticleStats = {

@@ -5,10 +5,10 @@ import debug from 'debug';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
-import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents } from './commands/index.js';
+import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const help = `Usage: dev <init|new|push|stats|diaggen|toc> [options]
+const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -17,6 +17,7 @@ Commands:
   n, new <file>         Create new article
   d, diaggen [files]    Generate diagram images from code blocks [default: *.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
+  c, checklinks [files] Check for broken links in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: *.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
@@ -98,6 +99,11 @@ export async function run(args: string[]) {
     case 't':
     case 'toc': {
       return updateTableOfContents(parameters);
+    }
+
+    case 'c':
+    case 'checklinks': {
+      return checkLinks(parameters);
     }
 
     case 'p':

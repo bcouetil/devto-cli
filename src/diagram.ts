@@ -4,7 +4,7 @@ import Debug from 'debug';
 import fs from 'fs-extra';
 import got from 'got';
 import pako from 'pako';
-import Jimp from 'jimp';
+import sharp from 'sharp';
 import { HttpsProxyAgent } from 'hpagent';
 import { type Article } from './models.js';
 
@@ -33,10 +33,22 @@ const proxyAgent = proxyUrl ? new HttpsProxyAgent({
  */
 async function addWhiteBackground(pngBuffer: Buffer): Promise<Buffer> {
   try {
-    const image = await Jimp.read(pngBuffer);
-    const white = new Jimp(image.bitmap.width, image.bitmap.height, 0xFFFFFFFF);
-    white.composite(image, 0, 0);
-    return await white.getBufferAsync(Jimp.MIME_PNG);
+    const image = sharp(pngBuffer);
+    const metadata = await image.metadata();
+    const { width = 100, height = 100 } = metadata;
+
+    // Create white background and composite the image on top
+    return await sharp({
+      create: {
+        width,
+        height,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{ input: pngBuffer }])
+      .png()
+      .toBuffer();
   } catch (error) {
     debug('Failed to add white background, using original image: %s', error);
     return pngBuffer;

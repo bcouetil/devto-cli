@@ -88,9 +88,15 @@ async function processArticles(
   remoteArticles: Article[],
   repository: Repository,
   branch: string,
-  options: Partial<PushOptions>
+  options: Partial<PushOptions>,
+  spinner: any
 ): Promise<PushResult[]> {
-  const processArticle = async (article: Article) => {
+  const results: PushResult[] = [];
+
+  // Process articles sequentially to show progress and stop on first error
+  for (const article of localArticles) {
+    spinner.text = `Processing ${article.file}...`;
+
     // Replace diagrams with images before processing (in memory only)
     let articleWithImages = article;
     try {
@@ -151,15 +157,35 @@ async function processArticles(
       }
     }
 
-    return {
+    const result = {
       article: newArticle,
       status,
       publishedStatus: newArticle.data.published ? PublishedStatus.published : PublishedStatus.draft,
       errors: errors.length > 0 ? errors : undefined
     };
-  };
 
-  return pMap(localArticles, processArticle, { concurrency: 5 });
+    results.push(result);
+
+    // Display result immediately
+    spinner.stop();
+    const statusStr = `[${status}]`.padEnd(14);
+    const pubStr = `[${result.publishedStatus}]`.padEnd(12);
+    console.log(`${statusStr} ${pubStr} ${newArticle.data.title}`);
+    if (errors.length > 0) {
+      console.error(chalk.red(`  Error: ${errors.join(', ')}`));
+    }
+    spinner.start();
+
+    // Stop on first error
+    if (status === SyncStatus.failed || status === SyncStatus.imageOffline) {
+      spinner.stop();
+      console.error(chalk.red('\n❌ Stopping due to error. Fix the issue and retry.'));
+      process.exitCode = -1;
+      return results;
+    }
+  }
+
+  return results;
 }
 
 export async function push(files: string[], options?: Partial<PushOptions>): Promise<PushResult[] | null> {
@@ -229,11 +255,13 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     }
 
     spinner.text = 'Pushing articles to dev.to…';
-    const results = await processArticles(articles, remoteArticles, repository, branch, options);
+    const results = await processArticles(articles, remoteArticles, repository, branch, options, spinner);
 
     spinner.stop();
-    console.error(formatErrors(results));
-    console.info(formatResultsTable(results));
+
+    // Don't show table at end since we already showed results during processing
+    // console.error(formatErrors(results));
+    // console.info(formatResultsTable(results));
 
     const outOfSync = results.some((r) => r.status === SyncStatus.outOfSync);
     if (outOfSync) {

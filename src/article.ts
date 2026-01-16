@@ -223,10 +223,19 @@ export async function checkArticleForOfflineImages(article: Article): Promise<st
     await pMap(urls, checkUrl, { concurrency: 5 });
     return null;
   } catch (error) {
-    if (error instanceof RequestError && error.response) {
-      const url = error.response.requestUrl.toString();
-      debug('Image "%s" appears to be offline', url);
-      return url;
+    if (error instanceof RequestError) {
+      const url = error.response?.requestUrl?.toString() || (error as any).options?.url?.toString() || 'unknown URL';
+      if (error.response) {
+        const statusCode = error.response.statusCode;
+        const statusMessage = error.response.statusMessage || 'Unknown error';
+        debug('Image "%s" appears to be offline: %s %s', url, statusCode, statusMessage);
+        return `${url} (HTTP ${statusCode}: ${statusMessage})`;
+      } else {
+        // No response means network/connection error
+        const errorMsg = error.message || String(error);
+        debug('Image "%s" check failed: %s', url, errorMsg);
+        return `${url} (${errorMsg})`;
+      }
     }
 
     debug('Error while checking image: %s', String(error));

@@ -133,7 +133,7 @@ async function processArticles(
 
         if (offlineImage) {
           status = SyncStatus.imageOffline;
-          errors.push(`Image ${offlineImage} is offline`);
+          errors.push(`Image is offline: ${offlineImage}`);
         } else {
           status = newArticle.data.id ? SyncStatus.updated : SyncStatus.created;
         }

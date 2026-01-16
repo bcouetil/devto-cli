@@ -5,5 +5,6 @@ export * from './models.js';
 export * from './repo.js';
 export * from './spinner.js';
 export * from './status.js';
+export * from './toc.js';
 export * from './util.js';
 export * from './commands/index.js';

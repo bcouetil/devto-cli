@@ -34,7 +34,7 @@ If you only want to synchronize a GitHub repository with dev.to, you can follow 
 ## Usage
 
 ```
-Usage: dev <init|new|push|stats|diaggen> [options]
+Usage: dev <init|new|push|stats|diaggen|toc> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -42,9 +42,11 @@ Commands:
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
   d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
+  t, toc [files]        Update table of contents in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
+    --update-toc        Update table of contents before pushing
   s, stats              Display stats for your latest published articles
     -n, --number <n>    Number of articles to list stats for [default: 10]
     -j, --json          Format result as JSON
@@ -81,6 +83,26 @@ There are a few more step needed to finish the setup on GitHub, see the [quickst
 `dev diaggen [files]` generates PNG images from diagram code blocks using Kroki (default: `*.md`).
 
 See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
+
+### Toc
+
+`dev toc [files]` updates the table of contents in markdown files (`*.md` by default).
+
+This command uses the [bitdowntoc](https://github.com/derlin/bitdowntoc) algorithm adapted for dev.to anchor generation.
+
+**Usage:**
+
+Add TOC markers in your markdown file:
+
+```markdown
+<!-- TOC start -->
+
+<!-- TOC end -->
+```
+
+Then run `dev toc` to generate/update the table of contents between these markers.
+
+You can also use `dev push --update-toc` to automatically update TOC before pushing to dev.to.
 
 ### Push
 

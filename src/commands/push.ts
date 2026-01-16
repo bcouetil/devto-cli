@@ -19,6 +19,7 @@ import { getBranch, getRepository } from '../repo.js';
 import { SyncStatus, PublishedStatus } from '../status.js';
 import { createSpinner } from '../spinner.js';
 import { replaceDiagramsInArticle } from '../diagram.js';
+import { updateToc, needsTocUpdate } from '../toc.js';
 import { type Article, type Repository } from '../models.js';
 
 const debug = Debug('push');
@@ -31,6 +32,7 @@ export type PushOptions = {
   reconcile: boolean;
   checkImages: boolean;
   useOrganization: boolean;
+  updateToc: boolean;
 };
 
 export type PushResult = {
@@ -96,8 +98,25 @@ async function processArticles(
   const results: PushResult[] = [];
 
   // Process articles sequentially to show progress and stop on first error
-  for (const article of localArticles) {
+  for (let article of localArticles) {
     spinner.text = `Processing ${article.file}...`;
+
+    // Update TOC if enabled and article has a TOC marker
+    if (options.updateToc && needsTocUpdate(article.content)) {
+      debug('Updating TOC for %s', article.file);
+      const updatedContent = updateToc(article.content);
+      if (updatedContent !== article.content) {
+        article = { ...article, content: updatedContent };
+        if (!options.dryRun) {
+          try {
+            await saveArticleToFile(article);
+            debug('Saved article with updated TOC: %s', article.file);
+          } catch (error) {
+            debug('Warning: Could not save TOC update for %s: %s', article.file, String(error));
+          }
+        }
+      }
+    }
 
     // Replace diagrams with images before processing (in memory only)
     let articleWithImages = article;

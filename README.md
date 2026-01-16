@@ -216,6 +216,7 @@ All frontmatter properties [natively supported by dev.to](https://dev.to/p/edito
 In addition, these frontmatter properties specified to the CLI are used to configure the behavior of the tool:
 - `id`: The article ID on dev.to. If not specified, a new article will be created on publish.
 - `date`: The publication date of the article. If not specified, the current date will be used on publish.
+- `link`: The URL of the article on dev.to. Automatically updated after each push.
 - `devto_sync`: If set to `false`, the article will not be synchronized with dev.to at all.
 
 ## Create a new GitHub repository synchronized with dev.to

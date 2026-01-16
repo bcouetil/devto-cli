@@ -8,6 +8,7 @@ export type ArticleMetadata = Partial<{
   published: boolean | null;
   id: number | null;
   date: string | null;
+  link: string | null;
 }>;
 
 export type Article = {

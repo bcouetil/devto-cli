@@ -78,13 +78,13 @@ There are a few more step needed to finish the setup on GitHub, see the [quickst
 
 ### Diaggen
 
-`dev diaggen [files]` generates PNG images from diagram code blocks using Kroki (default: `posts/**/*.md`).
+`dev diaggen [files]` generates PNG images from diagram code blocks using Kroki (default: `*.md`).
 
 See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
 
 ### Push
 
-`dev push [files]` pushes all updates for the specified files to dev.to (`posts/***/*.md` by default, globs supported).
+`dev push [files]` pushes all updates for the specified files to dev.to (`*.md` by default, globs supported).
 
 This command only updates articles that have changes.
 

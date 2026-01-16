@@ -15,8 +15,8 @@ Commands:
     -p, --pull          Pull your articles from dev.to
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
-  d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
-  p, push [files]       Push articles to dev.to [default: posts/**/*.md]
+  d, diaggen [files]    Generate diagram images from code blocks [default: *.md]
+  p, push [files]       Push articles to dev.to [default: *.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
   s, stats              Display stats for your latest published articles

@@ -15,8 +15,8 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
   const spinner = createSpinner(debug);
 
   try {
-    // Default to posts/**/*.md if no files specified
-    const patterns = filesGlob && filesGlob.length > 0 ? filesGlob : ['posts/**/*.md'];
+    // Default to *.md if no files specified
+    const patterns = filesGlob && filesGlob.length > 0 ? filesGlob : ['*.md'];
 
     spinner.start('Loading articles...');
     const articles = await getArticlesFromFiles(patterns);

@@ -40,6 +40,7 @@ export type PushResult = {
   status: string;
   publishedStatus: string;
   errors?: string[];
+  url?: string;
 };
 
 export function formatErrors(results: PushResult[]) {
@@ -182,7 +183,8 @@ async function processArticles(
       article: newArticle,
       status,
       publishedStatus: newArticle.data.published ? PublishedStatus.published : PublishedStatus.draft,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      url: updateResult?.url || newArticle.data.link || undefined
     };
 
     results.push(result);
@@ -192,6 +194,9 @@ async function processArticles(
     const statusStr = `[${status}]`.padEnd(14);
     const pubStr = `[${result.publishedStatus}]`.padEnd(12);
     console.log(`${statusStr} ${pubStr} ${newArticle.data.title}`);
+    if (result.url && localArticles.length === 1) {
+      console.log(chalk.cyan(`  → ${result.url}`));
+    }
     if (errors.length > 0) {
       console.error(chalk.red(`  Error: ${errors.join(', ')}`));
     }

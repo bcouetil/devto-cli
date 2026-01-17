@@ -167,10 +167,11 @@ export function reconcileLocalArticles(remoteArticles: Article[], localArticles:
 
 function areArticlesEqual(article1: Article, article2: Article): boolean {
   // Note: ignore date for comparison, since dev.to does not always format it the same way,
-  // and it's not meant to be updated anyways
+  // and it's not meant to be updated anyways.
+  // Ignore link since it's auto-generated and may have ?preview=fixme suffix for drafts.
   const options: any = { lineWidth: -1 };
-  const a1 = matter.stringify(article1, { ...article1.data, date: null }, options);
-  const a2 = matter.stringify(article2, { ...article2.data, date: null }, options);
+  const a1 = matter.stringify(article1, { ...article1.data, date: null, link: null }, options);
+  const a2 = matter.stringify(article2, { ...article2.data, date: null, link: null }, options);
   return a1 === a2;
 }
 

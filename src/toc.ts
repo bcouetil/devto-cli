@@ -263,46 +263,65 @@ function generateTocMarkdown(entries: TocEntry[], options: Required<TocOptions>)
  */
 function hasToc(content: string): boolean {
   return content.includes(TOC_PLACEHOLDER) ||
-         content.includes('{%- # TOC start') ||
-         content.includes('{% comment %}TOC start') ||
-         content.includes('<!-- TOC start');
+    content.includes('{%- # TOC start') ||
+    content.includes('{% comment %}TOC start') ||
+    content.includes('<!-- TOC start');
 }
 
 /**
- * Find and remove existing TOC block
+ * Find TOC position in content
+ * Returns { startLine, endLine } or null if no TOC found
  */
-function removeExistingToc(content: string): string {
+function findTocPosition(content: string): { startLine: number; endLine: number } | null {
   const lines = content.split('\n');
-  const result: string[] = [];
-  let inToc = false;
+  let startLine = -1;
+  let endLine = -1;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
 
-    // Check for TOC start markers (Liquid or HTML style)
+    // Check for TOC start markers
     if (trimmed.includes('TOC start') &&
-        (trimmed.startsWith('{%-') || trimmed.startsWith('{% comment %}') || trimmed.startsWith('<!--'))) {
-      inToc = true;
-      continue;
+      (trimmed.startsWith('{%-') || trimmed.startsWith('{% comment %}') || trimmed.startsWith('<!--'))) {
+      startLine = i;
     }
 
     // Check for TOC end markers
-    if (inToc && trimmed.includes('TOC end')) {
-      inToc = false;
-      continue;
+    if (startLine !== -1 && trimmed.includes('TOC end')) {
+      endLine = i;
+      break;
     }
 
     // Check for simple [TOC] placeholder
     if (trimmed === TOC_PLACEHOLDER) {
-      continue;
-    }
-
-    if (!inToc) {
-      result.push(line);
+      return { startLine: i, endLine: i };
     }
   }
 
-  return result.join('\n');
+  if (startLine !== -1 && endLine !== -1) {
+    return { startLine, endLine };
+  }
+
+  return null;
+}
+
+/**
+ * Find and remove existing TOC block, returning content and original position
+ */
+function removeExistingToc(content: string): { content: string; position: { startLine: number; endLine: number } | null } {
+  const position = findTocPosition(content);
+
+  if (!position) {
+    return { content, position: null };
+  }
+
+  const lines = content.split('\n');
+  const result = [
+    ...lines.slice(0, position.startLine),
+    ...lines.slice(position.endLine + 1)
+  ];
+
+  return { content: result.join('\n'), position };
 }
 
 /**
@@ -311,11 +330,8 @@ function removeExistingToc(content: string): string {
 export function updateToc(content: string, options?: TocOptions): string {
   const opts = { ...defaultOptions, ...options };
 
-  // Remove existing TOC
-  let cleanContent = removeExistingToc(content);
-
-  // Remove leading empty lines after TOC removal
-  cleanContent = cleanContent.replace(/^\n+/, '');
+  // Remove existing TOC and get its position
+  const { content: cleanContent, position: tocPosition } = removeExistingToc(content);
 
   // Extract TOC entries from the clean content
   const entries = extractTocEntries(cleanContent, opts);
@@ -328,7 +344,7 @@ export function updateToc(content: string, options?: TocOptions): string {
   // Generate TOC markdown
   const tocMarkdown = generateTocMarkdown(entries, opts);
 
-  // Wrap TOC with Liquid comments (dev.to style)
+  // Wrap TOC with HTML comments (dev.to style)
   const wrappedToc = [
     TOC_START,
     '',
@@ -337,20 +353,19 @@ export function updateToc(content: string, options?: TocOptions): string {
     TOC_END,
   ].join('\n');
 
-  // Find where to insert TOC (after front matter in the content)
-  // Note: article.content typically does NOT contain front matter (it's in article.data)
-  // So we insert TOC at the beginning with a leading newline for proper spacing
-  // when matter.stringify combines front matter + content
-  const frontMatterMatch = cleanContent.match(/^---\n[\s\S]*?\n---\n*/);
-  if (frontMatterMatch) {
-    // Content has front matter (unusual but handle it)
-    const afterFrontMatter = frontMatterMatch[0].length;
-    const beforeToc = cleanContent.slice(0, afterFrontMatter).replace(/\n+$/, '\n');
-    const afterToc = cleanContent.slice(afterFrontMatter).replace(/^\n+/, '');
-    return beforeToc + '\n' + wrappedToc + '\n\n' + afterToc;
+  const lines = cleanContent.split('\n');
+
+  // If TOC existed, insert at same position
+  if (tocPosition) {
+    const result = [
+      ...lines.slice(0, tocPosition.startLine),
+      wrappedToc,
+      ...lines.slice(tocPosition.startLine)
+    ];
+    return result.join('\n');
   }
 
-  // No front matter in content (normal case), insert TOC at beginning
+  // No existing TOC - insert at beginning
   // Add leading newline so matter.stringify produces a blank line after front matter
   const contentWithoutLeadingNewlines = cleanContent.replace(/^\n+/, '');
   return '\n' + wrappedToc + '\n\n' + contentWithoutLeadingNewlines;

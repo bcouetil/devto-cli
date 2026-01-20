@@ -12,7 +12,8 @@ import {
   updateLocalArticle,
   saveArticleToFile,
   reconcileLocalArticles,
-  checkArticleForOfflineImages
+  checkArticleForOfflineImages,
+  updateArticleFooter
 } from '../article.js';
 import { getAllArticles, updateRemoteArticle, getUserOrganizations, getOrganizationId } from '../api.js';
 import { getBranch, getRepository } from '../repo.js';
@@ -100,20 +101,36 @@ async function processArticles(
 
   // Process articles sequentially to show progress and stop on first error
   for (let article of localArticles) {
-    // Update TOC if enabled and article has a TOC marker
+    // Update footer FIRST if DEVTO_FOOTER_FILE is set (so TOC reflects final content)
+    const footerFilePath = process.env.DEVTO_FOOTER_FILE;
+    let footerWasUpdated = false;
+    if (footerFilePath) {
+      const articleWithFooter = await updateArticleFooter(article, footerFilePath);
+      if (articleWithFooter.content !== article.content) {
+        article = { ...article, content: articleWithFooter.content };
+        footerWasUpdated = true;
+        debug('Updated footer for %s', article.file);
+      }
+    }
+
+    // Update TOC if enabled and article has a TOC marker (after footer so TOC reflects final structure)
+    let tocWasUpdated = false;
     if (options.updateToc && needsTocUpdate(article.content)) {
       debug('Updating TOC for %s', article.file);
       const updatedContent = updateToc(article.content);
       if (updatedContent !== article.content) {
         article = { ...article, content: updatedContent };
-        if (!options.dryRun) {
-          try {
-            await saveArticleToFile(article);
-            debug('Saved article with updated TOC: %s', article.file);
-          } catch (error) {
-            debug('Warning: Could not save TOC update for %s: %s', article.file, String(error));
-          }
-        }
+        tocWasUpdated = true;
+      }
+    }
+
+    // Save local file if footer or TOC was updated
+    if ((footerWasUpdated || tocWasUpdated) && !options.dryRun) {
+      try {
+        await saveArticleToFile(article);
+        debug('Saved article with updated footer/TOC: %s', article.file);
+      } catch (error) {
+        debug('Warning: Could not save article update for %s: %s', article.file, String(error));
       }
     }
 

@@ -250,6 +250,52 @@ When you run `dev push`, the CLI will:
 - If `DEVTO_ORG` is **not** defined: articles without the `organization` field will publish under your personal account (default behavior)
 - If `DEVTO_ORG` **is** defined: add `organization: <none>` to explicitly publish under your personal account instead of the organization. This value will never be replaced by the CLI.
 
+#### Automatic footer for articles
+
+You can configure an automatic footer that will be appended to all **published** articles during push. This is useful for adding consistent "Further Readings" sections, author bios, or other recurring content.
+
+**Setup:**
+
+Add `DEVTO_FOOTER_FILE=<path-to-footer-file>` to your `.env` file. The path can be:
+- Absolute path: `/home/user/articles/.github/further-readings.md`
+- Relative to current working directory: `.github/further-readings.md`
+- Relative to the article file location
+
+**How it works:**
+
+1. The CLI reads the footer file and identifies its first non-empty line as the "marker"
+2. When pushing an article with `published: true`, it searches for this marker in the article content
+3. If found, everything from the marker to the end of the article is replaced with the footer content
+4. If the marker is not found, the article remains unchanged
+
+**Example:**
+
+Footer file (`further-readings.md`):
+```markdown
+# Further Readings
+
+- [Article 1](https://example.com/article1)
+- [Article 2](https://example.com/article2)
+```
+
+In your article, add the same first line where you want the footer:
+```markdown
+# My Article Content
+
+Some content here...
+
+# Further Readings
+
+- [Old link](https://example.com/old)
+```
+
+When pushing, the "# Further Readings" section and everything after will be replaced with the current footer file content.
+
+**Notes:**
+- Footer is only applied to articles with `published: true`
+- The marker matching is based on trimmed content (leading/trailing whitespace is ignored)
+- The local article file is also updated with the new footer
+
 ### Working behind a proxy
 
 If you're working in a corporate environment behind a proxy, the CLI supports proxy configuration through standard environment variables:

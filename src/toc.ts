@@ -337,17 +337,23 @@ export function updateToc(content: string, options?: TocOptions): string {
     TOC_END,
   ].join('\n');
 
-  // Find where to insert TOC (after front matter)
+  // Find where to insert TOC (after front matter in the content)
+  // Note: article.content typically does NOT contain front matter (it's in article.data)
+  // So we insert TOC at the beginning with a leading newline for proper spacing
+  // when matter.stringify combines front matter + content
   const frontMatterMatch = cleanContent.match(/^---\n[\s\S]*?\n---\n*/);
   if (frontMatterMatch) {
+    // Content has front matter (unusual but handle it)
     const afterFrontMatter = frontMatterMatch[0].length;
     const beforeToc = cleanContent.slice(0, afterFrontMatter).replace(/\n+$/, '\n');
     const afterToc = cleanContent.slice(afterFrontMatter).replace(/^\n+/, '');
     return beforeToc + '\n' + wrappedToc + '\n\n' + afterToc;
   }
 
-  // No front matter, insert at beginning
-  return wrappedToc + '\n\n' + cleanContent;
+  // No front matter in content (normal case), insert TOC at beginning
+  // Add leading newline so matter.stringify produces a blank line after front matter
+  const contentWithoutLeadingNewlines = cleanContent.replace(/^\n+/, '');
+  return '\n' + wrappedToc + '\n\n' + contentWithoutLeadingNewlines;
 }
 
 /**

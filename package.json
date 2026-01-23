@@ -161,10 +161,7 @@
     "pre-commit": "npx lint-staged"
   },
   "lint-staged": {
-    "*.js": [
-      "xo --fix",
-      "git add"
-    ]
+    "*.js": "xo --fix"
   },
   "release": {
     "extends": "semantic-release-npm-github",

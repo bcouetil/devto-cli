@@ -194,12 +194,17 @@ async function processArticles(
       }
     }
 
+    // For preview articles, prefer the link from the header (with token) over the remote URL
+    const articleUrl = !newArticle.data.published && newArticle.data.link
+      ? newArticle.data.link
+      : updateResult?.url || newArticle.data.link || undefined;
+
     const result = {
       article: newArticle,
       status,
       publishedStatus: newArticle.data.published ? PublishedStatus.published : PublishedStatus.draft,
       errors: errors.length > 0 ? errors : undefined,
-      url: updateResult?.url || newArticle.data.link || undefined
+      url: articleUrl
     };
 
     results.push(result);

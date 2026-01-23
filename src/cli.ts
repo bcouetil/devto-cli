@@ -5,16 +5,18 @@ import debug from 'debug';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
-import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks } from './commands/index.js';
+import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks, rename } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks> [options]
+const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename> [options]
 
 Commands:
   i, init               Init current dir as an article repository
     -p, --pull          Pull your articles from dev.to
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
+  r, rename <file>      Rename article file based on its title
+    -d, --dry-run       Show what would be renamed without doing it
   d, diaggen [files]    Generate diagram images from code blocks [default: *.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
@@ -89,6 +91,13 @@ export async function run(args: string[]) {
     case 'n':
     case 'new': {
       return createNew(parameters[0], options.token);
+    }
+
+    case 'r':
+    case 'rename': {
+      return rename(parameters, {
+        dryRun: options['dry-run']
+      });
     }
 
     case 'd':

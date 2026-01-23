@@ -5,3 +5,4 @@ export * from './stats.js';
 export * from './diaggen.js';
 export * from './toc.js';
 export * from './checklinks.js';
+export * from './rename.js';

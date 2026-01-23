@@ -34,13 +34,15 @@ If you only want to synchronize a GitHub repository with dev.to, you can follow 
 ## Usage
 
 ```
-Usage: dev <init|new|push|stats|diaggen|toc|checklinks> [options]
+Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename> [options]
 
 Commands:
   i, init               Init current dir as an article repository
     -p, --pull          Pull your articles from dev.to
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
+  r, rename <files>     Rename article files based on their title
+    -d, --dry-run       Show what would be renamed without doing it
   d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
@@ -78,6 +80,24 @@ There are a few more step needed to finish the setup on GitHub, see the [quickst
 ### New
 
 `dev new <file>` creates a new markdown file with front matter properties prepared for you.
+
+### Rename
+
+`dev rename <files>` renames article files based on their title, using a consistent naming strategy.
+
+**Algorithm:**
+1. Remove leading emoji and colon separator from the title
+2. Filter out stop words, numbers, and category words (matching the filename prefix)
+3. Keep the first 5 significant words
+4. Convert to kebab-case
+
+The filename prefix (everything before the last `_`) is preserved. For example, a file named `23_05_01_GITLAB_old-name.md` with title "🦊 GitLab CI: Best Practices for Pipelines" would become `23_05_01_GITLAB_ci-best-practices-pipelines.md`.
+
+**Example:**
+```bash
+dev rename "*.md"           # Rename all markdown files
+dev rename --dry-run "*.md" # Preview changes without renaming
+```
 
 ### Diaggen
 

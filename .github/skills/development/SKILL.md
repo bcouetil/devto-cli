@@ -1,10 +1,15 @@
+---
+name: development
+description: Guide for developing this CLI project. Use this when making code changes, adding features, or modifying the codebase.
+---
+
 # Development Guide
 
 ## Workflow
 
 1. Make your changes in `src/`
 2. Compile: `npx tsc`
-3. ALWAYS Test using the `dev` CLI (see [TESTING.md](TESTING.md))
+3. ALWAYS Test using the `dev` CLI (see [TESTING.md](../../TESTING.md))
 4. **Update README.md** if you add/change commands or features
 
 ## CLI Output Guidelines

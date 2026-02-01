@@ -188,11 +188,15 @@ export async function updateLocalArticle(article: Article, remoteData: RemoteArt
     hasChanged = true;
   }
 
-  // Only update link if not already set (allows manual preview token addition)
-  if (remoteData.url && !data.link) {
-    // Add ?preview=fixme for unpublished articles as API doesn't provide preview token
-    data.link = remoteData.published ? remoteData.url : `${remoteData.url}?preview=fixme`;
-    hasChanged = true;
+  // Update link if not set, or if article is published (overwrite preview link)
+  // Use published_at as indicator since API response may not include published field
+  const isPublished = remoteData.published || !!remoteData.published_at;
+  if (remoteData.url && (!data.link || isPublished)) {
+    const newLink = isPublished ? remoteData.url : `${remoteData.url}?preview=fixme`;
+    if (data.link !== newLink) {
+      data.link = newLink;
+      hasChanged = true;
+    }
   }
 
   return { ...newArticle, hasChanged };

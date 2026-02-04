@@ -138,8 +138,26 @@ async function processArticles(
     let articleWithImages = article;
     try {
       articleWithImages = await replaceDiagramsInArticle(article);
-    } catch (error) {
-      debug('Warning: Could not replace diagrams in article %s: %s', article.file, String(error));
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      debug('Diagram replacement failed for %s: %s', article.file, errorMessage);
+      const result = {
+        article,
+        status: SyncStatus.failed,
+        publishedStatus: article.data.published ? PublishedStatus.published : PublishedStatus.draft,
+        errors: [errorMessage]
+      };
+      results.push(result);
+
+      // Display error immediately
+      spinner.stop();
+      const statusStr = `[${result.status}]`.padEnd(14);
+      const pubStr = `[${result.publishedStatus}]`.padEnd(12);
+      console.log(`${statusStr} ${pubStr} ${article.data.title}`);
+      console.error(chalk.red(`  Error: ${errorMessage}`));
+      console.error(chalk.red('\n❌ Stopping due to error. Fix the issue and retry.'));
+      process.exitCode = -1;
+      return results;
     }
 
     let newArticle = prepareArticleForDevto(articleWithImages, repository, branch);

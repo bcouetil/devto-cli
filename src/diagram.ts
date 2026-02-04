@@ -283,13 +283,11 @@ export async function replaceDiagramsInArticle(article: Article): Promise<Articl
     if (await fs.pathExists(imagePath)) {
       diagramMap.set(diagram.originalText, imagePath);
     } else {
-      debug('Warning: Diagram image not found: %s', imagePath);
-      debug('Run "dev diaggen" first to generate diagram images');
+      throw new Error(
+        `Diagram image not found: ${imagePath}\n` +
+        `Run "dev diaggen" first to generate diagram images, then commit and push to GitHub.`
+      );
     }
-  }
-
-  if (diagramMap.size === 0) {
-    return article;
   }
 
   const updatedContent = replaceDiagramsWithImages(article.content, diagramMap, article.file!);

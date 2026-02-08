@@ -5,7 +5,7 @@ import debug from 'debug';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
-import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks, rename } from './commands/index.js';
+import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks, rename, badges } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +17,7 @@ function normalizeFilePaths(files: string[]): string[] {
   return files.map(f => f.replace(/^\.[\\/]/, ''));
 }
 
-const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename> [options]
+const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename|badges> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -32,10 +32,13 @@ Commands:
   p, push [files]       Push articles to dev.to [default: *.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
-    --update-toc        Update table of contents before pushing
+    -u, --update-toc        Update table of contents before pushing
   s, stats              Display stats for your latest published articles
     -n, --number <n>    Number of articles to list stats for [default: 10]
     -j, --json          Format result as JSON
+  badges [files]        Generate _ARTICLES.md with article badges [default: *.md]
+    -o, --output <file> Output file [default: _ARTICLES.md]
+    --jpg               Generate JPEG badges in images/badges/
 
 General options:
   -t, --token <token>   Use this dev.to API token
@@ -48,8 +51,8 @@ General options:
 
 export async function run(args: string[]) {
   const options = minimist(args, {
-    string: ['token', 'repo', 'branch'],
-    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc'],
+    string: ['token', 'repo', 'branch', 'output'],
+    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc', 'jpg'],
     alias: {
       v: 'version',
       e: 'reconcile',
@@ -60,7 +63,9 @@ export async function run(args: string[]) {
       p: 'pull',
       r: 'repo',
       b: 'branch',
-      s: 'skip-git'
+      s: 'skip-git',
+      o: 'output',
+      u: 'update-toc'
     }
   });
 
@@ -145,6 +150,16 @@ export async function run(args: string[]) {
         devtoKey: options.token,
         number: options.number,
         json: options.json
+      });
+    }
+
+    case 'badges': {
+      return badges(normalizeFilePaths(parameters), {
+        devtoKey: options.token,
+        repo: options.repo,
+        branch: options.branch,
+        output: options.output,
+        jpg: options.jpg
       });
     }
 

@@ -17,6 +17,77 @@ export const defaultArticlesFolder = 'posts';
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
 const proxyAgent = proxyUrl ? new HttpsProxyAgent({ proxy: proxyUrl }) : undefined;
 
+/**
+ * Updates the article content with a footer file content.
+ * The footer replaces everything from the first line of the footer file to the end of the article.
+ * @param article The article to update
+ * @param footerFilePath Path to the footer file (absolute or relative to cwd or article file)
+ * @returns The updated article with footer, or the original article if not published
+ * @throws Error if footer file is configured but not found or empty
+ */
+export async function updateArticleFooter(article: Article, footerFilePath: string | undefined): Promise<Article> {
+  if (!footerFilePath) {
+    return article;
+  }
+
+  // Only apply footer to published articles
+  if (!article.data.published) {
+    debug('Article "%s" is not published, skipping footer update', article.data.title);
+    return article;
+  }
+
+  // Resolve the footer file path
+  let resolvedPath = footerFilePath;
+
+  // If path is relative, try to resolve it
+  if (!path.isAbsolute(footerFilePath)) {
+    // First try relative to current working directory
+    const cwdPath = path.resolve(process.cwd(), footerFilePath);
+    if (await fs.pathExists(cwdPath)) {
+      resolvedPath = cwdPath;
+    } else if (article.file) {
+      // Then try relative to the article file
+      const articleDir = path.dirname(path.resolve(article.file));
+      const articleRelPath = path.resolve(articleDir, footerFilePath);
+      if (await fs.pathExists(articleRelPath)) {
+        resolvedPath = articleRelPath;
+      }
+    }
+  }
+
+  if (!await fs.pathExists(resolvedPath)) {
+    throw new Error(`Footer file not found: ${footerFilePath} (resolved to: ${resolvedPath})`);
+  }
+
+  const footerContent = (await fs.readFile(resolvedPath, 'utf8')).replace(/\r\n/g, '\n');
+  const footerLines = footerContent.split('\n');
+
+  if (footerLines.length === 0) {
+    throw new Error(`Footer file is empty: ${resolvedPath}`);
+  }
+
+  // Get the first non-empty line of the footer as the marker
+  const firstFooterLine = footerLines.find(line => line.trim().length > 0);
+  if (!firstFooterLine) {
+    throw new Error(`Footer file has no non-empty lines: ${resolvedPath}`);
+  }
+
+  // Find the marker in the article content
+  const articleLines = article.content.split(/\r?\n/);
+  const markerIndex = articleLines.findIndex(line => line.trim() === firstFooterLine.trim());
+
+  if (markerIndex === -1) {
+    debug('Footer marker "%s" not found in article "%s", article unchanged', firstFooterLine.trim(), article.data.title);
+    return article;
+  }
+
+  // Replace from marker to end with footer content
+  const newContent = [...articleLines.slice(0, markerIndex), footerContent].join('\n');
+  debug('Updated footer in article "%s" (marker found at line %d)', article.data.title, markerIndex + 1);
+
+  return { ...article, content: newContent };
+}
+
 export async function getArticlesFromFiles(filesGlob: string[]): Promise<Article[]> {
   const files: string[] = await globby(filesGlob);
   const articles = await Promise.all(files.map(getArticleFromFile));

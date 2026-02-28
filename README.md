@@ -34,7 +34,7 @@ If you only want to synchronize a GitHub repository with dev.to, you can follow 
 ## Usage
 
 ```
-Usage: dev <init|new|push|stats|diaggen|toc> [options]
+Usage: dev <init|new|push|stats|diaggen|toc|checklinks> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -43,6 +43,7 @@ Commands:
   n, new <file>         Create new article
   d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
+  c, checklinks [files] Check for broken links in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
@@ -103,6 +104,28 @@ Add TOC markers in your markdown file:
 Then run `dev toc` to generate/update the table of contents between these markers.
 
 You can also use `dev push --update-toc` to automatically update TOC before pushing to dev.to.
+
+### Checklinks
+
+`dev checklinks [files]` checks for broken links in markdown files (`*.md` by default).
+
+This command scans all markdown links `[text](url)` and verifies they are accessible.
+
+**Features:**
+- Only checks markdown-formatted links (ignores URLs in code blocks)
+- Treats bot-blocking responses (403, 429, 503) as valid
+- Reports truly broken links (404, 410) and connection errors
+- Shows a summary with file and link statistics
+
+**Example output:**
+```
+✓ my-article.md (15 links OK)
+⚠ another-article.md (1/8 broken)
+    ✗ https://example.com/deleted-page (HTTP 404)
+
+Files: 10 OK | 1 with broken links | 2 skipped
+Links: 95 OK | 1 broken
+```
 
 ### Push
 

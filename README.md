@@ -17,6 +17,8 @@
 - Quickly bootstrap a GitHub repository ready to synchronize with dev.to
 - Create new articles with front matter ready
 - Show stats for your latest published articles
+- Automatic diagram generation using [Kroki](https://kroki.io)
+- Proxy support for corporate environments (HTTP/HTTPS_PROXY)
 - No config file needed 😎
 
 #### What's dev.to?
@@ -32,13 +34,14 @@ If you only want to synchronize a GitHub repository with dev.to, you can follow 
 ## Usage
 
 ```
-Usage: dev <init|new|push|stats> [options]
+Usage: dev <init|new|push|stats|diaggen> [options]
 
 Commands:
   i, init               Init current dir as an article repository
     -p, --pull          Pull your articles from dev.to
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
+  d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
@@ -73,6 +76,12 @@ There are a few more step needed to finish the setup on GitHub, see the [quickst
 
 `dev new <file>` creates a new markdown file with front matter properties prepared for you.
 
+### Diaggen
+
+`dev diaggen [files]` generates PNG images from diagram code blocks using Kroki (default: `posts/**/*.md`).
+
+See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
+
 ### Push
 
 `dev push [files]` pushes all updates for the specified files to dev.to (`posts/***/*.md` by default, globs supported).
@@ -90,6 +99,37 @@ You can add image files in your repository along your markdown and link to them 
 When an article is pushed to dev.to, all **relative** images links (without an `http(s)://` prefix) will be modified with the format `https://raw.githubusercontent.com/<USER>/<REPO_NAME>/<BRANCH>/` prefix to leverage GitHub hosting. You have make sure that you pushed your git changes including the images to your GitHub repository, otherwise you might end up with `404` errors. By default the CLI will [check]((#check-for-offline-images)) that all your linked images are online before pushing to avoid mistakes.
 
 All absolute image links will be left untouched, so you can choose to host your images elsewhere if you prefer.
+
+#### Diagrams support
+
+The CLI automatically converts diagram code blocks into images using [Kroki](https://kroki.io).
+
+**Supported types:** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob
+
+**Workflow:**
+
+1. Add a diagram with an optional name comment:
+
+````markdown
+<!-- diagram-name: my-flowchart -->
+```mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+````
+
+2. Generate images, commit to GitHub, then push to dev.to:
+
+```bash
+dev diaggen
+git add posts/images/ && git commit -m "feat: add diagrams" && git push
+dev push
+```
+
+**Notes:**
+- Images are cached by content checksum - rerun `dev diaggen` after modifications
+- Original markdown files remain unchanged
 
 #### Reconcile with existing articles
 
@@ -146,6 +186,26 @@ You can also create a `.env` file at the root of your repository and add `DEVTO_
 By default, the tool will try to detect the branch from which it was run and use it. If you want to use a different branch, you can use the `--branch` option to specify it, or set the `DEVTO_BRANCH` environment variable.
 
 You can also add `DEVTO_REPO=<BRANCH>` in a `.env` file at the root of your repository.
+
+### Working behind a proxy
+
+If you're working in a corporate environment behind a proxy, the CLI supports proxy configuration through standard environment variables:
+
+- `HTTP_PROXY` or `http_proxy` - HTTP proxy URL
+- `HTTPS_PROXY` or `https_proxy` - HTTPS proxy URL
+
+Example:
+```bash
+export HTTPS_PROXY=http://proxy.company.com:8080
+dev push
+```
+
+The proxy configuration will be used for:
+- API calls to dev.to
+- Diagram generation using Kroki
+- Image availability checks
+
+If you experience issues with self-signed certificates in your corporate proxy, the CLI is configured to accept them for diagram generation.
 
 ## Using frontmatter properties
 

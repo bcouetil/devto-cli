@@ -5,7 +5,6 @@ const debug = Debug('ansi');
 
 // Default color palette (hex values)
 const BASE_COLORS: Record<string, string> = {
-  BLACK: '#1e1e1e',
   RED: '#ff6161',
   GREEN: '#5cf759',
   YELLOW: '#f4d03f',
@@ -17,22 +16,20 @@ const BASE_COLORS: Record<string, string> = {
   GRAY: '#bcbcbc'
 };
 
-// Light background colors get dark text instead of white
-const LIGHT_BG = new Set(['CYAN', 'WHITE']);
+// Background colors that need dark text for readability
+const DARK_TEXT_BG = new Set(['WHITE']);
 
 type AnsiColors = Record<string, string>;
 
 /**
- * Build default color map: 9 text + 9 bold + 8 bg (no BG_GRAY)
+ * Build default color map: text + bold + bg for each base color
  */
 function buildDefaultColors(): AnsiColors {
   const colors: AnsiColors = {};
   for (const [name, hex] of Object.entries(BASE_COLORS)) {
     colors[name] = hex;
     colors[`BOLD_${name}`] = hex;
-    if (name !== 'GRAY') {
-      colors[`BG_${name}`] = hex;
-    }
+    colors[`BG_${name}`] = hex;
   }
 
   return colors;
@@ -74,12 +71,8 @@ export function ansiTagToStyle(tagName: string, colors: AnsiColors): string | un
   // Background variant
   if (tagName.startsWith('BG_')) {
     const baseName = tagName.slice(3); // Remove "BG_"
-    const isLight = LIGHT_BG.has(baseName);
-    if (isLight) {
-      return `background-color:${hex};color:#1e1e1e`;
-    }
-
-    return `background-color:${hex};color:white;font-weight:bold`;
+    const textColor = DARK_TEXT_BG.has(baseName) ? '#1e1e1e' : 'white';
+    return `background-color:${hex};color:${textColor};font-weight:bold`;
   }
 
   // Plain text color

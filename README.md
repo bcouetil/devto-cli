@@ -1,37 +1,51 @@
 # :postbox: devto-cli
 
-[![NPM version](https://img.shields.io/npm/v/@sinedied/devto-cli.svg)](https://www.npmjs.com/package/@sinedied/devto-cli)
-[![Build Status](https://github.com/sinedied/devto-cli/workflows/build/badge.svg)](https://github.com/sinedied/devto-cli/actions)
-![Node version](https://img.shields.io/node/v/@sinedied/devto-cli.svg)
-[![XO code style](https://img.shields.io/badge/code_style-XO-5ed9c7.svg)](https://github.com/sindresorhus/xo)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/593151/82310296-7c85ba80-99c4-11ea-88c2-8e6452885e6a.png" alt="cli logo" width="160px">
-</p>
 
 > [Dev.to](https://dev.to) authoring CLI to create and publish markdown files as articles, using assets hosted on GitHub.
 
-#### Main features
-- Create & update dev.to articles based on markdown files
-- Quickly bootstrap a GitHub repository ready to synchronize with dev.to
-- Create new articles with front matter ready
-- Show stats for your latest published articles
-- Automatic diagram generation using [Kroki](https://kroki.io)
+_This is an opinionated fork of [devto-cli](https://github.com/sinedied/devto-cli) by [@sinedied](https://github.com/sinedied). The original CLI provides article creation, push to dev.to, stats display, GitHub repository bootstrapping, and a [GitHub Action](https://github.com/sinedied/publish-devto) for automated publishing — all without config files._
+
+This fork adds:
 - Proxy support for corporate environments (HTTP/HTTPS_PROXY)
-- No config file needed 😎
-
-#### What's dev.to?
-
-> https://dev.to is a free and open source content platform for developers. It's also an excellent way to engage with developer community, discuss about tech and a welcoming place for beginners.
+- Automatic diagram generation using [Kroki](https://kroki.io)
+- Organization publishing support
+- Table of contents generation
+- Broken link checking
+- Automatic footer management
+- Article file renaming based on title
+- Article badges generation
+- ANSI color blocks for styled terminal-like output in articles
 
 ## Installation
 
-`npm install -g @sinedied/devto-cli`
+```bash
+git clone https://github.com/bcouetil/devto-cli.git
+cd devto-cli
+npm install
+npm run build
+npm link
+```
 
-If you only want to synchronize a GitHub repository with dev.to, you can follow this [quickstart tutorial](#create-a-new-github-repository-synchronized-with-devto) without installing the CLI.
+This makes the `dev` command available globally.
 
 ## Usage
+
+Create a `.env` file in your articles directory:
+
+```bash
+DEVTO_TOKEN=your_dev_to_api_token
+DEVTO_ASSETS_PUBLIC_REPO=username/articles
+DEVTO_ASSETS_PUBLIC_BRANCH=main
+DEVTO_ORG=your-organization
+DEVTO_FOOTER_FILE=path/to/further-readings.md
+
+# Override ANSI block colors (optional)
+# ANSI_RED=#e74c3c
+# ANSI_BG_BLUE=#2980b9
+```
+
+Then run commands from that directory:
 
 ```
 Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename|badges> [options]
@@ -72,7 +86,7 @@ General options:
 
 It does 3 things:
 
-1. Setup a [GitHub Actions workflow](https://github.com/sinedied/publish-devto) to automatically push your updates to dev.to each time a new commit is added to the `main` branch.
+1. Setup a [GitHub Actions workflow](https://github.com/sinedied/publish-devto) to automatically push your updates to dev.to each time a new commit is added to the `main` branch
 
 2. Create a `posts` folder with a first article
 
@@ -245,6 +259,69 @@ You can disable this behavior using the `--skip-check-images` option, but it's r
 
 Using the `--dry-run` option the whole push process will be executed, but without making any changes on dev.to or local files. You can use this to check your configuration and see what changes you can expect.
 
+#### ANSI color blocks
+
+The CLI supports colored code blocks using a custom `ansi` syntax. During push, ` ```ansi ` blocks are converted to styled HTML `<pre><code>` blocks in memory — your local files remain unchanged.
+
+**Syntax:**
+
+Use `{{TAG}}` to start a color and `{{/}}` to end it. The closing tag is optional — if omitted, the style applies until the next tag or end of block.
+
+````markdown
+```ansi
+{{GREEN}}Success:{{/}} operation completed
+{{BOLD_RED}}Error:{{/}} something went wrong
+{{BG_BLUE}}Highlighted section{{/}}
+```
+````
+
+**Available tags:**
+
+Each base color (RED, GREEN, YELLOW, ORANGE, BLUE, MAGENTA, CYAN, WHITE, GRAY) supports three variants:
+
+| Variant    | Example        | CSS effect                           |
+| ---------- | -------------- | ------------------------------------ |
+| Text       | `{{RED}}`      | `color`                              |
+| Bold       | `{{BOLD_RED}}` | `color` + `font-weight:bold`         |
+| Background | `{{BG_RED}}`   | `background-color` + bold white text |
+
+> **Note:** All background variants use bold white text, except `BG_WHITE` which uses dark text for readability.
+
+**Default color palette** (green and cyan match GitLab job logs colors)**:**
+
+| Color   | Hex       |
+| ------- | --------- |
+| RED     | `#ff6161` |
+| GREEN   | `#5cf759` |
+| YELLOW  | `#f4d03f` |
+| ORANGE  | `#ffaf00` |
+| BLUE    | `#5797ff` |
+| MAGENTA | `#8e44ad` |
+| CYAN    | `#00bdbd` |
+| WHITE   | `#ecf0f1` |
+| GRAY    | `#bcbcbc` |
+
+**Custom colors:**
+
+You can override any color using environment variables with the `ANSI_` prefix:
+
+```bash
+ANSI_RED=#cc0000 ANSI_GREEN=#00cc00 dev push
+```
+
+Or add them to your `.env` file:
+
+```
+ANSI_RED=#cc0000
+ANSI_CUSTOM=#ff00ff
+```
+
+You can also define entirely new color names (e.g., `ANSI_CUSTOM=#ff00ff` creates `{{CUSTOM}}`, `{{BOLD_CUSTOM}}`, and `{{BG_CUSTOM}}`).
+
+**Soft-wrapping:**
+
+Lines inside ANSI blocks are automatically soft-wrapped at 75 characters to fit dev.to code block width.
+
 ### Stats
 
 `dev stats` allows you to see the stats for your latest *published* articles.
@@ -271,13 +348,13 @@ In order to [host your images using GitHub](#images-hosting) the tool needs to k
 
 If your git repository is initialized and you have the `origin` remote set to your GitHub repository it will be auto-detected and you have nothing to do.
 
-Otherwise, you can either use the `--repo` option to provide your GitHub repository in the form `<USER>/<REPO_NAME>`, or set the `DEVTO_REPO` environment variable.
+Otherwise, you can either use the `--repo` option to provide your GitHub repository in the form `<USER>/<REPO_NAME>`, or set the `DEVTO_ASSETS_PUBLIC_REPO` environment variable.
 
-You can also create a `.env` file at the root of your repository and add `DEVTO_REPO=<USER>/<REPO_NAME>` in it.
+You can also create a `.env` file at the root of your repository and add `DEVTO_ASSETS_PUBLIC_REPO=<USER>/<REPO_NAME>` in it.
 
-By default, the tool will try to detect the branch from which it was run and use it. If you want to use a different branch, you can use the `--branch` option to specify it, or set the `DEVTO_BRANCH` environment variable.
+By default, the tool will try to detect the branch from which it was run and use it. If you want to use a different branch, you can use the `--branch` option to specify it, or set the `DEVTO_ASSETS_PUBLIC_BRANCH` environment variable.
 
-You can also add `DEVTO_REPO=<BRANCH>` in a `.env` file at the root of your repository.
+You can also add `DEVTO_ASSETS_PUBLIC_BRANCH=<BRANCH>` in a `.env` file at the root of your repository.
 
 #### Publishing under an organization
 
@@ -375,39 +452,3 @@ In addition, these frontmatter properties specified to the CLI are used to confi
 - `link`: The URL of the article on dev.to. Automatically updated after each push.
 - `organization`: The organization username to publish under. If not specified and `DEVTO_ORG` is set, it will be added automatically.
 - `devto_sync`: If set to `false`, the article will not be synchronized with dev.to at all.
-
-## Create a new GitHub repository synchronized with dev.to
-
-The easiest way to get started is to:
-
-1. Create a new GitHub repository using [this template](https://github.com/sinedied/devto-github-template/generate)
-
-1. Go to https://developers.forem.com/api/#section/Authentication/api_key and follow the **Getting an API key** instructions to generate your own dev.to API key.
-
-1. Select the **Settings** tab on your GitHub repository, then go to the **Secrets** section.
-
-1. Add a secret called **DEVTO_TOKEN** with the value of your dev.to API key.
-
-Now your articles are ready to be published on dev.to! 🎉
-
-### Starting from scratch
-
-Alternatively, instead of using the template, you can start from scratch with the CLI.
-
-1. Create a new folder on your machine, the use the `dev init` command to initialize the files.
-
-1. Commit the changes: `git add . && git commit -m "feat: add dev.to workflow"`
-
-1. Create a new repository on GitHub, and follow the instructions to push an existing repository, that was created by `dev init`.
-
-1. Go to https://developers.forem.com/api/#section/Authentication/api_key and follow the **Getting an API key** instructions to generate your own dev.to API key.
-
-1. Select the **Settings** tab on your GitHub repository, then go to the **Secrets** section.
-
-1. Add a secret called **DEVTO_TOKEN** with the value of your dev.to API key.
-
-## Related
-
-This CLI was heavily inspired by the [dev-to-git](https://github.com/maxime1992/dev-to-git). I used in fact `dev-to-git` for some time, but ultimately wanted something more flexible and easier to use and setup without the need for config files. I also wanted full automation support in a GitHub Action, leading me to create this new tool.
-
-The [publish-devto](https://github.com/sinedied/publish-devto) GitHub action use this CLI under the hood to provide a single step dev.to publish workflow with GitHub Actions.

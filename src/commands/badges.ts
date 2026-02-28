@@ -284,20 +284,20 @@ export async function badges(files?: string[], options?: Partial<BadgesOptions>)
 
   if (!options.repo) {
     dotenv.config();
-    options.repo = process.env.DEVTO_REPO;
+    options.repo = process.env.DEVTO_ASSETS_PUBLIC_REPO || process.env.DEVTO_REPO;
   }
 
   if (!options.repo) {
     process.exitCode = -1;
     console.error(
       `${chalk.red(`No GitHub repository provided.`)}\nUse ${chalk.bold(`--repo`)} option or ${chalk.bold(
-        `DEVTO_REPO`
+        `DEVTO_ASSETS_PUBLIC_REPO`
       )} in .env file.`
     );
     return;
   }
 
-  const branch = options.branch ?? process.env.DEVTO_BRANCH ?? 'main';
+  const branch = options.branch ?? process.env.DEVTO_ASSETS_PUBLIC_BRANCH ?? process.env.DEVTO_BRANCH ?? 'main';
   const repository = parseRepository(options.repo);
   const spinner = createSpinner(debug);
 

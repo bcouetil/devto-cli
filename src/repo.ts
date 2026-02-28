@@ -82,7 +82,7 @@ export async function getRepositoryFromGit(): Promise<Repository | null> {
 }
 
 export function getRepositoryFromStringOrEnv(string?: string): Repository | null {
-  return parseRepository(string) ?? parseRepository(process.env.DEVTO_REPO);
+  return parseRepository(string) ?? parseRepository(process.env.DEVTO_ASSETS_PUBLIC_REPO) ?? parseRepository(process.env.DEVTO_REPO);
 }
 
 export async function getRepository(string?: string, searchPackageUp = true): Promise<Repository | null> {
@@ -129,7 +129,7 @@ export async function getCurrentBranchFromGit(): Promise<string | null> {
 }
 
 export function getBranchFromStringOrEnv(string?: string): string | null {
-  const branch = string || process.env.DEVTO_BRANCH;
+  const branch = string || process.env.DEVTO_ASSETS_PUBLIC_BRANCH || process.env.DEVTO_BRANCH;
   return branch?.trim() || null;
 }
 

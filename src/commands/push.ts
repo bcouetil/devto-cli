@@ -20,6 +20,7 @@ import { getBranch, getRepository } from '../repo.js';
 import { SyncStatus, PublishedStatus } from '../status.js';
 import { createSpinner } from '../spinner.js';
 import { replaceDiagramsInArticle } from '../diagram.js';
+import { loadAnsiColors, replaceAnsiBlocksInArticle } from '../ansi.js';
 import { updateToc, needsTocUpdate } from '../toc.js';
 import { type Article, type Repository } from '../models.js';
 
@@ -98,6 +99,7 @@ async function processArticles(
   spinner: any
 ): Promise<PushResult[]> {
   const results: PushResult[] = [];
+  const ansiColors = loadAnsiColors();
 
   // Process articles sequentially to show progress and stop on first error
   for (let article of localArticles) {
@@ -159,6 +161,9 @@ async function processArticles(
       process.exitCode = -1;
       return results;
     }
+
+    // Replace ANSI color blocks with HTML (in memory only)
+    articleWithImages = replaceAnsiBlocksInArticle(articleWithImages, ansiColors);
 
     let newArticle = prepareArticleForDevto(articleWithImages, repository, branch);
     const needsUpdate = checkIfArticleNeedsUpdate(remoteArticles, newArticle);

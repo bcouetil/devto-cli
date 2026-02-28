@@ -6,11 +6,16 @@ import matter from 'gray-matter';
 import slugify from 'slugify';
 import got, { RequestError } from 'got';
 import pMap from 'p-map';
+import { HttpsProxyAgent } from 'hpagent';
 import { updateRelativeImageUrls, getImageUrls } from './util.js';
 import { type Article, type ArticleMetadata, type RemoteArticleData, type Repository } from './models.js';
 
 const debug = Debug('article');
 export const defaultArticlesFolder = 'posts';
+
+// Configure proxy for corporate environments
+const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+const proxyAgent = proxyUrl ? new HttpsProxyAgent({ proxy: proxyUrl }) : undefined;
 
 export async function getArticlesFromFiles(filesGlob: string[]): Promise<Article[]> {
   const files: string[] = await globby(filesGlob);
@@ -193,7 +198,17 @@ export async function checkArticleForOfflineImages(article: Article): Promise<st
 
     const checkUrl = async (url: string) => {
       debug('Checking image "%s"…', url);
-      await got(url);
+      const requestOptions: any = {
+        https: {
+          rejectUnauthorized: false
+        }
+      };
+
+      if (proxyAgent) {
+        requestOptions.agent = { https: proxyAgent };
+      }
+
+      await got(url, requestOptions);
       return null;
     };
 

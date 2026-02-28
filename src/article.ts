@@ -52,7 +52,8 @@ function generateFrontMatterMetadata(remoteData: RemoteArticleData): ArticleMeta
       frontmatter.canonical_url || remoteData.url === remoteData.canonical_url ? null : remoteData.canonical_url,
     published: remoteData.published ? true : null,
     id: remoteData.id,
-    date: remoteData.published_at
+    date: remoteData.published_at,
+    link: remoteData.url
   };
 
   // Clean up unset properties
@@ -108,6 +109,11 @@ export async function updateLocalArticle(article: Article, remoteData: RemoteArt
 
   if (remoteData.published_at) {
     data.date = remoteData.published_at;
+    hasChanged = true;
+  }
+
+  if (remoteData.url) {
+    data.link = remoteData.url;
     hasChanged = true;
   }
 

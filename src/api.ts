@@ -55,6 +55,47 @@ async function retryRequest(fn: () => Promise<RemoteArticleData>, retries: numbe
   }
 }
 
+export async function getOrganizationId(orgUsername: string, devtoKey?: string): Promise<number | null> {
+  try {
+    const options: any = {
+      ...httpOptions,
+      responseType: 'json'
+    };
+
+    if (devtoKey) {
+      options.headers = { 'api-key': devtoKey };
+    }
+
+    const result = await got<any>(`${apiUrl}/organizations/${orgUsername}`, options);
+    const orgId = result.body.id;
+    debug('Found organization %s with ID: %s', orgUsername, orgId);
+    return orgId;
+  } catch (error) {
+    debug('Error fetching organization %s: %s', orgUsername, String(error));
+    return null;
+  }
+}
+
+export async function getUserOrganizations(devtoKey: string): Promise<{ id: number; username: string } | null> {
+  try {
+    // Check environment variable for organization username
+    const envOrg = process.env.DEVTO_ORG;
+    if (envOrg) {
+      const orgId = await getOrganizationId(envOrg, devtoKey);
+      if (orgId) {
+        debug('Using organization from environment: %s (ID: %s)', envOrg, orgId);
+        return { id: orgId, username: envOrg };
+      }
+    }
+
+    debug('No organization configured');
+    return null;
+  } catch (error) {
+    debug('Error fetching user organizations: %s', String(error));
+    return null;
+  }
+}
+
 export async function getAllArticles(devtoKey: string): Promise<RemoteArticleData[]> {
   try {
     const articles = [];
@@ -133,7 +174,12 @@ export async function updateRemoteArticle(article: Article, devtoKey: string): P
     try {
       const markdown = matter.stringify(article, article.data, { lineWidth: -1 } as any);
       const { id } = article.data;
-      const requestData = { article: { title: article.data.title, body_markdown: markdown } };
+      const requestData: any = { article: { title: article.data.title, body_markdown: markdown } };
+
+      // Include organization_id if present (only for new articles or if explicitly set)
+      if (article.data.organization_id) {
+        requestData.article.organization_id = article.data.organization_id;
+      }
       debug('Sending request data: %O', requestData);
       // Throttle API calls in case of article creation or update
       const get = id ? throttledPutForUpdate : throttledPostForCreate;

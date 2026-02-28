@@ -187,6 +187,24 @@ By default, the tool will try to detect the branch from which it was run and use
 
 You can also add `DEVTO_REPO=<BRANCH>` in a `.env` file at the root of your repository.
 
+#### Publishing under an organization
+
+To publish articles under a dev.to organization instead of your personal account:
+
+1. Add `DEVTO_ORG=<organization-username>` to your `.env` file
+
+2. Add `organization: <organization-username>` to your article's front matter, or let the CLI add it automatically
+
+When you run `dev push`, the CLI will:
+- Automatically add the organization field to articles that don't have it
+- Resolve the organization ID from the organization username via the dev.to API
+- Publish articles to the specified organization
+
+**Publishing under your personal account:**
+
+- If `DEVTO_ORG` is **not** defined: articles without the `organization` field will publish under your personal account (default behavior)
+- If `DEVTO_ORG` **is** defined: add `organization: <none>` to explicitly publish under your personal account instead of the organization. This value will never be replaced by the CLI.
+
 ### Working behind a proxy
 
 If you're working in a corporate environment behind a proxy, the CLI supports proxy configuration through standard environment variables:
@@ -217,6 +235,7 @@ In addition, these frontmatter properties specified to the CLI are used to confi
 - `id`: The article ID on dev.to. If not specified, a new article will be created on publish.
 - `date`: The publication date of the article. If not specified, the current date will be used on publish.
 - `link`: The URL of the article on dev.to. Automatically updated after each push.
+- `organization`: The organization username to publish under. If not specified and `DEVTO_ORG` is set, it will be added automatically.
 - `devto_sync`: If set to `false`, the article will not be synchronized with dev.to at all.
 
 ## Create a new GitHub repository synchronized with dev.to

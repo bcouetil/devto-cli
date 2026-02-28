@@ -1,5 +1,6 @@
 import Debug from 'debug';
 import got, { type Got, RequestError } from 'got';
+import { HttpsProxyAgent } from 'hpagent';
 import matter from 'gray-matter';
 import pThrottle from 'p-throttle';
 import { type Article, type RemoteArticleData, type ArticleStats } from './models.js';
@@ -9,6 +10,20 @@ const apiUrl = 'https://dev.to/api';
 const paginationLimit = 1000;
 const maxRetries = 3;
 const retryDelay = 1000; // 1 second delay before retrying
+
+// Proxy configuration from environment variables
+const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+const httpOptions: any = {};
+
+if (httpsProxy) {
+  debug('Using HTTPS proxy: %s', httpsProxy);
+  httpOptions.agent = {
+    https: new HttpsProxyAgent({
+      proxy: httpsProxy,
+      rejectUnauthorized: false // Allow self-signed certificates
+    })
+  };
+}
 
 // There's a limit of 10 articles created each 30 seconds by the same user,
 // so we need to throttle the API calls in that case.
@@ -46,6 +61,7 @@ export async function getAllArticles(devtoKey: string): Promise<RemoteArticleDat
     let page = 1;
     const getPage = async (page: number) =>
       got<RemoteArticleData[]>(`${apiUrl}/articles/me/all`, {
+        ...httpOptions,
         searchParams: { per_page: paginationLimit, page },
         headers: { 'api-key': devtoKey },
         responseType: 'json'
@@ -74,11 +90,15 @@ export async function getAllArticles(devtoKey: string): Promise<RemoteArticleDat
 
 export async function getLastArticlesStats(devtoKey: string, number: number): Promise<ArticleStats[]> {
   try {
+    debug('Requesting stats for %s articles', number);
+    debug('API URL: %s', `${apiUrl}/articles/me`);
     const result = await got<RemoteArticleData[]>(`${apiUrl}/articles/me`, {
+      ...httpOptions,
       searchParams: { per_page: number || 10 },
       headers: { 'api-key': devtoKey },
       responseType: 'json'
     });
+    debug('Received %s articles from API', result.body.length);
     return result.body.map((a) => ({
       date: a.published_at,
       title: a.title,
@@ -87,8 +107,21 @@ export async function getLastArticlesStats(devtoKey: string, number: number): Pr
       comments: a.comments_count
     }));
   } catch (error) {
-    if (error instanceof RequestError && error.response) {
-      debug('Debug infos: %O', error.response.body);
+    if (error instanceof RequestError) {
+      if (error.code === 'EACCES' || error.code === 'ECONNREFUSED') {
+        debug('Network connection error: %s', error.code);
+        console.error('\n❌ Network connection error. Check your proxy settings (HTTP_PROXY, HTTPS_PROXY).');
+      }
+
+      if (error.response) {
+        debug('API request failed with status: %s', error.response.statusCode);
+        debug('Response body: %O', error.response.body);
+      } else {
+        debug('Request error code: %s', error.code);
+        debug('Request error message: %s', error.message);
+      }
+    } else {
+      debug('Unexpected error: %s', (error as Error).message);
     }
 
     throw error;
@@ -105,11 +138,12 @@ export async function updateRemoteArticle(article: Article, devtoKey: string): P
       // Throttle API calls in case of article creation or update
       const get = id ? throttledPutForUpdate : throttledPostForCreate;
       const result = await get(`${apiUrl}/articles${id ? `/${id}` : ''}`, {
+        ...httpOptions,
         headers: { 'api-key': devtoKey },
         json: requestData,
         responseType: 'json'
       });
-      return result.body as RemoteArticleData;
+      return result.body as unknown as RemoteArticleData;
     } catch (error) {
       if (error instanceof RequestError && error.response) {
         debug('Request failed with status %s', error.response.statusCode);

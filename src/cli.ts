@@ -8,6 +8,15 @@ import fs from 'fs-extra';
 import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents, checkLinks, rename } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Normalize file paths for cross-platform compatibility.
+ * Removes leading .\ or ./ prefixes added by Windows tab completion.
+ */
+function normalizeFilePaths(files: string[]): string[] {
+  return files.map(f => f.replace(/^\.[\\/]/, ''));
+}
+
 const help = `Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename> [options]
 
 Commands:
@@ -90,34 +99,35 @@ export async function run(args: string[]) {
 
     case 'n':
     case 'new': {
-      return createNew(parameters[0], options.token);
+      const file = parameters[0]?.replace(/^\.[\\/]/, '');
+      return createNew(file, options.token);
     }
 
     case 'r':
     case 'rename': {
-      return rename(parameters, {
+      return rename(normalizeFilePaths(parameters), {
         dryRun: options['dry-run']
       });
     }
 
     case 'd':
     case 'diaggen': {
-      return generateDiagrams(parameters);
+      return generateDiagrams(normalizeFilePaths(parameters));
     }
 
     case 't':
     case 'toc': {
-      return updateTableOfContents(parameters);
+      return updateTableOfContents(normalizeFilePaths(parameters));
     }
 
     case 'c':
     case 'checklinks': {
-      return checkLinks(parameters);
+      return checkLinks(normalizeFilePaths(parameters));
     }
 
     case 'p':
     case 'push': {
-      return push(parameters, {
+      return push(normalizeFilePaths(parameters), {
         devtoKey: options.token,
         repo: options.repo,
         useOrganization: options['use-organization'] !== false,

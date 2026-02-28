@@ -135,7 +135,7 @@ export async function generateDiagramImage(
   try {
     // Normalize line endings to LF (Unix style) for Kroki
     const normalizedContent = diagram.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    
+
     // Use POST method to avoid URL length limits
     const url = `${KROKI_URL}/${diagram.type}/png`;
     debug('Requesting diagram from Kroki (POST): %s', url);
@@ -182,7 +182,7 @@ export async function generateDiagramImage(
       console.error('   PowerShell: $env:HTTPS_PROXY = "http://proxy.example.com:3131"');
       console.error('   Bash/Zsh:   export HTTPS_PROXY="http://proxy.example.com:3131"\n');
     }
-    
+
     const errorMessage = error?.response?.statusCode
       ? `HTTP ${error.response.statusCode}: ${error.response.statusMessage || 'Unknown error'}`
       : error?.message || String(error);

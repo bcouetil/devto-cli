@@ -53,7 +53,7 @@ function generateFrontMatterMetadata(remoteData: RemoteArticleData): ArticleMeta
     published: remoteData.published ? true : null,
     id: remoteData.id,
     date: remoteData.published_at,
-    link: remoteData.url
+    link: remoteData.published ? remoteData.url : `${remoteData.url}?preview=fixme`
   };
 
   // Clean up unset properties
@@ -112,8 +112,10 @@ export async function updateLocalArticle(article: Article, remoteData: RemoteArt
     hasChanged = true;
   }
 
-  if (remoteData.url) {
-    data.link = remoteData.url;
+  // Only update link if not already set (allows manual preview token addition)
+  if (remoteData.url && !data.link) {
+    // Add ?preview=fixme for unpublished articles as API doesn't provide preview token
+    data.link = remoteData.published ? remoteData.url : `${remoteData.url}?preview=fixme`;
     hasChanged = true;
   }
 

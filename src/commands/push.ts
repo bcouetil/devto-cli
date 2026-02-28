@@ -164,7 +164,7 @@ async function processArticles(
 
 export async function push(files: string[], options?: Partial<PushOptions>): Promise<PushResult[] | null> {
   options = options ?? {};
-  files = files.length > 0 ? files : ['posts/**/*.md'];
+  files = files.length > 0 ? files : ['*.md'];
   debug('files: %O', files);
   debug('options: %O', options);
 

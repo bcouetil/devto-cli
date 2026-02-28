@@ -5,10 +5,10 @@ import debug from 'debug';
 import minimist from 'minimist';
 import dotenv from 'dotenv';
 import fs from 'fs-extra';
-import { init, createNew, push, showStats, generateDiagrams } from './commands/index.js';
+import { init, createNew, push, showStats, generateDiagrams, updateTableOfContents } from './commands/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const help = `Usage: dev <init|new|push|stats|diaggen> [options]
+const help = `Usage: dev <init|new|push|stats|diaggen|toc> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -16,9 +16,11 @@ Commands:
     -s, --skip-git      Skip git repository init
   n, new <file>         Create new article
   d, diaggen [files]    Generate diagram images from code blocks [default: *.md]
+  t, toc [files]        Update table of contents in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: *.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
+    --update-toc        Update table of contents before pushing
   s, stats              Display stats for your latest published articles
     -n, --number <n>    Number of articles to list stats for [default: 10]
     -j, --json          Format result as JSON
@@ -35,7 +37,7 @@ General options:
 export async function run(args: string[]) {
   const options = minimist(args, {
     string: ['token', 'repo', 'branch'],
-    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose'],
+    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc'],
     alias: {
       v: 'version',
       e: 'reconcile',
@@ -93,6 +95,11 @@ export async function run(args: string[]) {
       return generateDiagrams(parameters);
     }
 
+    case 't':
+    case 'toc': {
+      return updateTableOfContents(parameters);
+    }
+
     case 'p':
     case 'push': {
       return push(parameters, {
@@ -102,7 +109,8 @@ export async function run(args: string[]) {
         branch: options.branch,
         dryRun: options['dry-run'],
         reconcile: options.reconcile,
-        checkImages: !options['skip-check-images']
+        checkImages: !options['skip-check-images'],
+        updateToc: options['update-toc']
       });
     }
 

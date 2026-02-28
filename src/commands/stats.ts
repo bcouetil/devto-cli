@@ -47,9 +47,8 @@ export async function showStats(options?: Partial<ShowStatsOptions>) {
       return;
     }
 
-    const remainingWidth = 42; // <- obviously :)
     const availableWidth = process.stdout.columns || 80;
-    const maxTitleWidth = Math.max(availableWidth - remainingWidth, 8);
+    debug('availableWidth: %s', availableWidth);
 
     const rows = stats.map((a) => [
       new Date(a.date).toLocaleDateString(),
@@ -59,12 +58,22 @@ export async function showStats(options?: Partial<ShowStatsOptions>) {
       scaleNumber(a.comments)
     ]);
     rows.unshift(['Date', 'Title', 'Views', 'Likes', 'Comm.']);
-    console.info(
-      table(rows, {
-        drawHorizontalLine: (index: number, size: number) => index === 0 || index === 1 || index === size,
-        columns: { 1: { truncate: maxTitleWidth, width: maxTitleWidth } }
-      })
-    );
+    const tableConfig: any = {
+      drawHorizontalLine: (index: number, size: number) => index === 0 || index === 1 || index === size
+    };
+    if (availableWidth >= 80) {
+      const maxTitleWidth = Math.max(availableWidth - 42, 8);
+      tableConfig.columns = { 1: { truncate: Math.min(maxTitleWidth, availableWidth - 40), width: Math.min(maxTitleWidth, availableWidth - 40) } };
+    }
+    try {
+      console.info(table(rows, tableConfig));
+    } catch (tableError) {
+      debug('Table error: %s', (tableError as Error).message);
+      // Fallback without column config
+      console.info(table(rows, {
+        drawHorizontalLine: (index: number, size: number) => index === 0 || index === 1 || index === size
+      }));
+    }
   } catch (error) {
     spinner.stop();
     process.exitCode = -1;

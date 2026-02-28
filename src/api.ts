@@ -100,16 +100,19 @@ export async function updateRemoteArticle(article: Article, devtoKey: string): P
     try {
       const markdown = matter.stringify(article, article.data, { lineWidth: -1 } as any);
       const { id } = article.data;
+      const requestData = { article: { title: article.data.title, body_markdown: markdown } };
+      debug('Sending request data: %O', requestData);
       // Throttle API calls in case of article creation or update
       const get = id ? throttledPutForUpdate : throttledPostForCreate;
       const result = await get(`${apiUrl}/articles${id ? `/${id}` : ''}`, {
         headers: { 'api-key': devtoKey },
-        json: { article: { title: article.data.title, body_markdown: markdown } },
+        json: requestData,
         responseType: 'json'
       });
       return result.body as RemoteArticleData;
     } catch (error) {
       if (error instanceof RequestError && error.response) {
+        debug('Request failed with status %s', error.response.statusCode);
         debug('Debug infos: %O', error.response.body);
       }
 

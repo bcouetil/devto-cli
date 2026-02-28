@@ -52,16 +52,27 @@ export function formatErrors(results: PushResult[]) {
 
 export function formatResultsTable(results: PushResult[]) {
   const rows = results.map((r) => [r.status, r.publishedStatus, r.article.data.title]);
-  const usedWidth = 27; // Status columns + padding
   const availableWidth = process.stdout.columns || 80;
-  const maxTitleWidth = Math.max(availableWidth - usedWidth, 8);
-
-  return table(rows, {
+  const tableConfig: any = {
     drawHorizontalLine: () => false,
     border: getBorderCharacters('void'),
-    columnDefault: { paddingLeft: 0, paddingRight: 1 },
-    columns: { 2: { truncate: maxTitleWidth, width: maxTitleWidth } }
-  }).slice(0, -1);
+    columnDefault: { paddingLeft: 0, paddingRight: 1 }
+  };
+  if (availableWidth >= 80) {
+    const usedWidth = 27;
+    const maxTitleWidth = Math.max(availableWidth - usedWidth, 8);
+    tableConfig.columns = { 2: { truncate: Math.min(maxTitleWidth, availableWidth - 30), width: Math.min(maxTitleWidth, availableWidth - 30) } };
+  }
+  try {
+    return table(rows, tableConfig).slice(0, -1);
+  } catch (tableError) {
+    // Fallback without column config
+    return table(rows, {
+      drawHorizontalLine: () => false,
+      border: getBorderCharacters('void'),
+      columnDefault: { paddingLeft: 0, paddingRight: 1 }
+    }).slice(0, -1);
+  }
 }
 
 async function getRemoteArticles(devtoKey: string): Promise<Article[]> {
@@ -216,11 +227,21 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     }
 
     return results;
-  } catch (error) {
-    spinner.stop();
-    process.exitCode = -1;
-    console.error(chalk.red(`Error: ${(error as Error).message}`));
-    console.error('Push failed');
-    return null;
-  }
+    } catch (error) {
+      spinner.stop();
+      process.exitCode = -1;
+      console.error(chalk.red(`Error: ${(error as Error).message}`));
+      console.error('Push failed');
+
+      // Check if it's a validation error from dev.to
+      if ((error as any)?.response?.statusCode === 422) {
+        const responseBody = (error as any)?.response?.body;
+        if (responseBody?.error) {
+          console.error(chalk.red(`Dev.to validation error: ${responseBody.error}`));
+          console.error('Please check your article markdown for syntax errors, especially image URLs.');
+        }
+      }
+
+      return null;
+    }
 }

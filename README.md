@@ -34,7 +34,7 @@ If you only want to synchronize a GitHub repository with dev.to, you can follow 
 ## Usage
 
 ```
-Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename> [options]
+Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename|badges> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -49,10 +49,13 @@ Commands:
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
-    --update-toc        Update table of contents before pushing
+    -u, --update-toc    Update table of contents before pushing
   s, stats              Display stats for your latest published articles
     -n, --number <n>    Number of articles to list stats for [default: 10]
     -j, --json          Format result as JSON
+  badges [files]        Generate _ARTICLES.md with article badges [default: *.md]
+    -o, --output <file> Output file [default: _ARTICLES.md]
+    --jpg               Generate JPEG badges in images/badges/
 
 General options:
   -t, --token <token>   Use this dev.to API token
@@ -146,6 +149,30 @@ This command scans all markdown links `[text](url)` and verifies they are access
 Files: 10 OK | 1 with broken links | 2 skipped
 Links: 95 OK | 1 broken
 ```
+
+### Badges
+
+`dev badges [files]` generates a `_ARTICLES.md` file with visual article badges organized by category (`*.md` by default).
+
+Each badge displays the article's cover image on the left with the title, publication date, and stats (reactions, reading time) on the right, fetched from the dev.to API.
+
+**Features:**
+- Articles grouped by category (extracted from filename prefix: GITLAB, K8S, GIT, MISC)
+- 2-column grid layout using HTML tables (GitHub-compatible)
+- Cover images served from GitHub raw URLs (no extra files to commit)
+- Sorted by publication date (newest first) within each category
+- Only published articles with a date are included
+
+**Usage:**
+```bash
+dev badges "*.md"                          # Generate _ARTICLES.md (HTML mode)
+dev badges "*.md" --jpg                    # Generate JPEG badges + _ARTICLES.md
+dev badges "*.md" --output README.md       # Custom output file
+```
+
+**JPEG mode (`--jpg`):**
+
+Generates individual JPEG badge files in `images/badges/` with the article cover as full background, title in white overlay, and stats (date, reactions, reading time). The `_ARTICLES.md` uses a 2-column grid of these JPEG badges.
 
 ### Push
 

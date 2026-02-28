@@ -6,3 +6,4 @@ export * from './diaggen.js';
 export * from './toc.js';
 export * from './checklinks.js';
 export * from './rename.js';
+export * from './badges.js';

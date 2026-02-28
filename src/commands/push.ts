@@ -100,8 +100,6 @@ async function processArticles(
 
   // Process articles sequentially to show progress and stop on first error
   for (let article of localArticles) {
-    spinner.text = `Processing ${article.file}...`;
-
     // Update TOC if enabled and article has a TOC marker
     if (options.updateToc && needsTocUpdate(article.content)) {
       debug('Updating TOC for %s', article.file);

@@ -409,7 +409,7 @@ export async function badges(files?: string[], options?: Partial<BadgesOptions>)
         const pngFile = path.join(badgesDir, `${badge.slug}.jpg`);
         const pngBuffer = await generateBadgePng(badge);
         await fs.writeFile(pngFile, pngBuffer);
-        badgeUrls.set(badge.slug, pngFile);
+        badgeUrls.set(badge.slug, pngFile.replace(/\\/g, '/'));
         badgeCount++;
         debug('Generated JPEG badge: %s', pngFile);
       }

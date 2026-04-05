@@ -13,7 +13,7 @@
     "dev": "./bin/devto.js"
   },
   "scripts": {
-    "build": "npm run clean -s && tsc",
+    "build": "npm run clean -s && tsc && cp -r assets lib/assets",
     "build:watch": "tsc -w --sourceMap",
     "lint": "xo",
     "lint:fix": "xo --fix",
@@ -172,6 +172,7 @@
     "npm": ">=9.0.0"
   },
   "files": [
+    "assets",
     "bin",
     "lib",
     "template"

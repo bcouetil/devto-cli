@@ -50,12 +50,12 @@ describe('needsTocUpdate', () => {
 });
 
 describe('generateTocOnly', () => {
-  it('should generate TOC from headers', () => {
+  it('should generate TOC from headers up to maxLevel (default: 2)', () => {
     const content = '# Title\n\n## Section 1\n\n### Subsection\n\n## Section 2';
     const toc = generateTocOnly(content);
     expect(toc).toContain('[Title](#title)');
     expect(toc).toContain('[Section 1](#section-1)');
-    expect(toc).toContain('[Subsection](#subsection)');
+    expect(toc).not.toContain('[Subsection](#subsection)'); // h3 excluded by default maxLevel=2
     expect(toc).toContain('[Section 2](#section-2)');
   });
 
@@ -72,14 +72,14 @@ describe('updateToc', () => {
   it('should insert TOC after front matter', () => {
     const content = '---\ntitle: Test\n---\n\n# Title\n\n## Section';
     const result = updateToc(content);
-    expect(result).toContain('{%- # TOC start');
+    expect(result).toContain('<!-- TOC start -->');
     expect(result).toContain('[Title](#title)');
     expect(result).toContain('[Section](#section)');
-    expect(result).toContain('{%- # TOC end -%}');
+    expect(result).toContain('<!-- TOC end -->');
   });
 
   it('should replace existing TOC', () => {
-    const content = '---\ntitle: Test\n---\n\n{%- # TOC start -%}\n\n- old\n\n{%- # TOC end -%}\n\n# Title\n\n## Section';
+    const content = '---\ntitle: Test\n---\n\n<!-- TOC start -->\n\n- old\n\n<!-- TOC end -->\n\n# Title\n\n## Section';
     const result = updateToc(content);
     expect(result).not.toContain('- old');
     expect(result).toContain('[Title](#title)');

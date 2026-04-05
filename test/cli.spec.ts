@@ -6,7 +6,12 @@ jest.unstable_mockModule('../src/commands', () => ({
   init: jest.fn(),
   push: jest.fn(),
   createNew: jest.fn(),
-  showStats: jest.fn()
+  showStats: jest.fn(),
+  generateDiagrams: jest.fn(),
+  updateTableOfContents: jest.fn(),
+  checkLinks: jest.fn(),
+  rename: jest.fn(),
+  badges: jest.fn()
 }));
 
 const { run } = await import('../src/cli');
@@ -61,16 +66,20 @@ describe('devto CLI', () => {
     expect(push).toHaveBeenCalledWith(['posts/*.md'], {
       devtoKey: '123',
       repo: 'git/repo',
+      branch: undefined,
       dryRun: true,
       reconcile: true,
-      checkImages: true
+      checkImages: true,
+      useOrganization: true,
+      updateToc: false
     });
   });
 
   it('should run new command', async () => {
     const { createNew } = await import('../src/commands');
     await run(['new', 'article']);
-    expect(createNew).toHaveBeenCalledWith('article');
+    // token comes from process.env.DEVTO_TOKEN when not provided via --token
+    expect(createNew).toHaveBeenCalledWith('article', process.env.DEVTO_TOKEN);
   });
 
   it('should run stats command', async () => {

@@ -208,9 +208,14 @@ All absolute image links will be left untouched, so you can choose to host your 
 
 #### Diagrams support
 
-The CLI automatically converts diagram code blocks into images using [Kroki](https://kroki.io).
+The CLI automatically converts diagram code blocks into images.
 
-**Supported types:** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob
+**Supported types via [Kroki](https://kroki.io):** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob
+
+**Supported types via local rendering:** gitlab-ci (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed)
+
+> **Why is `gitlab-ci` rendered locally instead of via Kroki?**
+> The `gitlab-ci` block is a custom CSV format (not supported by Kroki), converted locally to Graphviz DOT. The generated DOT references local icon files (✅, ⚠️, ⚙️ status icons) that Kroki's server cannot access. Additionally, Chrome headless is required to render emojis in color — server-side SVG-to-PNG conversion (as Kroki does) produces monochrome or missing emojis.
 
 **Workflow:**
 
@@ -233,8 +238,32 @@ git add posts/images/ && git commit -m "feat: add diagrams" && git push
 dev push
 ```
 
+**`gitlab-ci` block format** — describes a GitLab CI pipeline as CSV ([gitlab-ci-local --list-csv](https://github.com/firecow/gitlab-ci-local) output format):
+
+````markdown
+<!-- diagram-name: my-pipeline -->
+```gitlab-ci
+name;stage;when;allowFailure;needs
+🔎 eslint;🔎 Lint;on_success;false;
+🔎 type-check;🔎 Lint;on_success;false;
+📦🌐 build-api;📦 Build;on_success;false;
+📦🖥️ build-web;📦 Build;on_success;false;
+📦⚙️ build-worker;📦 Build;on_success;false;
+📦📚 build-docs;📦 Build;on_success;true;
+🕵🌐 sonar-api;✅ Test;on_success;false;[📦🌐 build-api]
+🕵🖥️ sonar-web;✅ Test;on_success;false;[📦🖥️ build-web]
+✅🌐 unit-tests-api;✅ Test;on_success;false;[📦🌐 build-api]
+✅🖥️ unit-tests-web;✅ Test;on_success;false;[📦🖥️ build-web]
+↔️✅ e2e-tests;✅ Test;manual;false;
+🚀 deploy-staging;🚀 Deploy;on_success;false;
+🚀 deploy-prod;🚀 Deploy;manual;false;
+```
+````
+
+![gitlab-ci example](gitlab-ci-example.png)
+
 **Notes:**
-- Images are cached by content checksum - rerun `dev diaggen` after modifications
+- Images are cached by content checksum — rerun `dev diaggen` after modifications
 - Original markdown files remain unchanged
 
 #### Reconcile with existing articles

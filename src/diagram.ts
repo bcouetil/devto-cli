@@ -7,6 +7,7 @@ import Debug from 'debug';
 import fs from 'fs-extra';
 import got from 'got';
 import pako from 'pako';
+import puppeteer from 'puppeteer';
 import sharp from 'sharp';
 import { HttpsProxyAgent } from 'hpagent';
 import { type Article } from './models.js';
@@ -22,6 +23,7 @@ export type DiagramBlock = {
 };
 
 const KROKI_URL = 'https://kroki.io';
+const WHICH_CMD = process.platform === 'win32' ? 'where' : 'which';
 const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'blockdiag', 'svgbob', 'gitlab-ci'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -127,7 +129,7 @@ function gitlabCiToDot(csvContent: string): string {
       let breakAt = -1;
       for (let k = maxChars; k > 0; k--) {
         if (remaining[k] === ' ' || remaining[k] === '[' ||
-            remaining[k - 1] === '-' || remaining[k - 1] === '_' || remaining[k - 1] === ',') {
+          remaining[k - 1] === '-' || remaining[k - 1] === '_' || remaining[k - 1] === ',') {
           breakAt = k;
           break;
         }
@@ -200,6 +202,18 @@ ${stageEdges}${needsEdges.length > 0 ? '\n' + needsEdges.join('\n') : ''}
  * Generate a PNG from a gitlab-ci pipeline definition using local dot binary
  */
 async function generateGitlabCiImage(diagram: DiagramBlock, outputPath: string): Promise<void> {
+  // Check that dot is available in PATH
+  if (spawnSync(WHICH_CMD, ['dot'], { env: process.env }).status !== 0) {
+    const hint = process.platform === 'win32'
+      ? `  PowerShell: $env:PATH += ";C:/path/to/tool-dir"\n  CMD:        set PATH=%PATH%;C:/path/to/tool-dir`
+      : `  export PATH="/path/to/tool-dir:$PATH"`;
+    throw new Error(
+      `Missing tool in PATH — required for gitlab-ci diagram rendering:\n` +
+      `  - Graphviz (dot) — install Graphviz and add its bin/ directory to your PATH\n` +
+      `Add it temporarily:\n${hint}`
+    );
+  }
+
   const dotSource = gitlabCiToDot(diagram.content);
   debug('Generated DOT from gitlab-ci:\n%s', dotSource);
 
@@ -241,7 +255,7 @@ async function generateGitlabCiImage(diagram: DiagramBlock, outputPath: string):
   const svgW = svgDims ? ptToPx(parseFloat(svgDims[1])) : 1200;
   const svgH = svgDims ? ptToPx(parseFloat(svgDims[2])) : 800;
 
-  // Use Chrome headless to render SVG → PNG with proper emoji color support
+  // Use puppeteer to render SVG → PNG with proper emoji color support
   const tmpHtml = path.join(os.tmpdir(), `gitlab-ci-render-${Date.now()}.html`);
   await fs.writeFile(tmpSvg, svg);
   await fs.writeFile(tmpHtml, `<!DOCTYPE html>
@@ -249,29 +263,17 @@ async function generateGitlabCiImage(diagram: DiagramBlock, outputPath: string):
 * { margin: 0; padding: 0; }
 html, body { width: ${svgW}px; background: white; }
 img { width: ${svgW}px; height: auto; display: block; }
-</style></head><body><img src="file://${tmpSvg}"></body></html>`);
+</style></head><body><img src="file:///${tmpSvg.replace(/\\/g, '/')}"></body></html>`);
 
-  const chromeCandidates = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    'chromium', 'google-chrome', 'chrome',
-  ];
-  const chrome = chromeCandidates.find(p => {
-    if (p.startsWith('/')) return fs.existsSync(p);
-    return spawnSync('which', [p], { env: process.env }).status === 0;
-  });
-  if (!chrome) throw new Error('Chrome/Chromium not found — required for SVG→PNG rendering with emoji support');
-
-  const tmpPng = outputPath + '.tmp.png';
-  const chromeResult = spawnSync(chrome, [
-    '--headless=new', '--disable-gpu', '--no-sandbox',
-    `--screenshot=${tmpPng}`,
-    `--window-size=${svgW},${svgH * 2}`,
-    `file://${tmpHtml}`,
-  ], { env: process.env });
-  if (!fs.existsSync(tmpPng)) {
-    const stderr = chromeResult.stderr?.toString() || chromeResult.error?.message || 'unknown error';
-    throw new Error(`Chrome screenshot failed: ${stderr}`);
+  const tmpPng = path.resolve(outputPath + '.tmp.png');
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-gpu'] });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: svgW, height: svgH * 2 });
+    await page.goto(`file:///${tmpHtml.replace(/\\/g, '/')}`, { waitUntil: 'networkidle0' });
+    await page.screenshot({ path: tmpPng, fullPage: true });
+  } finally {
+    await browser.close();
   }
 
   // Trim white borders left by graphviz's SVG padding

@@ -240,19 +240,36 @@ export function reconcileLocalArticles(remoteArticles: Article[], localArticles:
   });
 }
 
-function areArticlesEqual(article1: Article, article2: Article): boolean {
-  // Note: ignore date for comparison, since dev.to does not always format it the same way,
-  // and it's not meant to be updated anyways.
-  // Ignore link since it's auto-generated and may have ?preview=fixme suffix for drafts.
+export type ArticleDiff = {
+  line: number;
+  local: string;
+  remote: string;
+} | null;
+
+function getFirstDiff(article1: Article, article2: Article): ArticleDiff {
+  // Ignore date (dev.to formats it differently) and link (auto-generated, may have ?preview=fixme)
   const options: any = { lineWidth: -1 };
   const a1 = matter.stringify(article1, { ...article1.data, date: null, link: null }, options);
   const a2 = matter.stringify(article2, { ...article2.data, date: null, link: null }, options);
-  return a1 === a2;
+  if (a1 === a2) {
+    return null;
+  }
+
+  const lines1 = a1.split('\n');
+  const lines2 = a2.split('\n');
+  const maxLines = Math.max(lines1.length, lines2.length);
+  for (let i = 0; i < maxLines; i++) {
+    if (lines1[i] !== lines2[i]) {
+      return { line: i + 1, local: lines2[i] ?? '<missing>', remote: lines1[i] ?? '<missing>' };
+    }
+  }
+
+  return null;
 }
 
-export function checkIfArticleNeedsUpdate(remoteArticles: Article[], article: Article): boolean {
+export function checkIfArticleNeedsUpdate(remoteArticles: Article[], article: Article): { needsUpdate: boolean; diff: ArticleDiff } {
   if (!article.data.id) {
-    return true;
+    return { needsUpdate: true, diff: null };
   }
 
   const remoteArticle = remoteArticles.find((a) => a.data.id === article.data.id);
@@ -260,7 +277,8 @@ export function checkIfArticleNeedsUpdate(remoteArticles: Article[], article: Ar
     throw new Error(`Cannot find published article on dev.to: ${article.data.title ?? '<no title>'}`);
   }
 
-  return !areArticlesEqual(remoteArticle, article);
+  const diff = getFirstDiff(remoteArticle, article);
+  return { needsUpdate: diff !== null, diff };
 }
 
 export async function createNewArticle(file: string, organization?: string | null) {

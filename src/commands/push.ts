@@ -100,8 +100,10 @@ async function processArticles(
 ): Promise<PushResult[]> {
   const results: PushResult[] = [];
   const ansiColors = loadAnsiColors();
+  const maxErrors = 3;
+  let errorCount = 0;
 
-  // Process articles sequentially to show progress and stop on first error
+  // Process articles sequentially to show progress and stop after too many errors
   for (let article of localArticles) {
     // Update footer FIRST if DEVTO_FOOTER_FILE is set (so TOC reflects final content)
     const footerFilePath = process.env.DEVTO_FOOTER_FILE;
@@ -157,16 +159,23 @@ async function processArticles(
       const pubStr = `[${result.publishedStatus}]`.padEnd(12);
       console.log(`${statusStr} ${pubStr} ${article.data.title}`);
       console.error(chalk.red(`  Error: ${errorMessage}`));
-      console.error(chalk.red('\n❌ Stopping due to error. Fix the issue and retry.'));
-      process.exitCode = -1;
-      return results;
+
+      errorCount++;
+      if (errorCount >= maxErrors) {
+        console.error(chalk.red(`\n❌ Stopping after ${maxErrors} errors. Fix the issues and retry.`));
+        process.exitCode = -1;
+        return results;
+      }
+
+      spinner.start();
+      continue;
     }
 
     // Replace ANSI color blocks with HTML (in memory only)
     articleWithImages = replaceAnsiBlocksInArticle(articleWithImages, ansiColors);
 
     let newArticle = prepareArticleForDevto(articleWithImages, repository, branch);
-    const needsUpdate = checkIfArticleNeedsUpdate(remoteArticles, newArticle);
+    const { needsUpdate, diff } = checkIfArticleNeedsUpdate(remoteArticles, newArticle);
     let status = newArticle.hasChanged ? SyncStatus.reconciled : SyncStatus.upToDate;
     let updateResult = null;
     const errors = [];
@@ -240,17 +249,25 @@ async function processArticles(
     if (result.url && localArticles.length === 1) {
       console.log(chalk.cyan(`  → ${result.url}`));
     }
+    if (diff && status === SyncStatus.updated) {
+      console.log(chalk.gray(`  First diff at line ${diff.line}:`));
+      console.log(chalk.gray(`    local : ${diff.local}`));
+      console.log(chalk.gray(`    remote: ${diff.remote}`));
+    }
     if (errors.length > 0) {
       console.error(chalk.red(`  Error: ${errors.join(', ')}`));
     }
     spinner.start();
 
-    // Stop on first error
+    // Stop after too many errors
     if (status === SyncStatus.failed || status === SyncStatus.imageOffline) {
-      spinner.stop();
-      console.error(chalk.red('\n❌ Stopping due to error. Fix the issue and retry.'));
-      process.exitCode = -1;
-      return results;
+      errorCount++;
+      if (errorCount >= maxErrors) {
+        spinner.stop();
+        console.error(chalk.red(`\n❌ Stopping after ${maxErrors} errors. Fix the issues and retry.`));
+        process.exitCode = -1;
+        return results;
+      }
     }
   }
 

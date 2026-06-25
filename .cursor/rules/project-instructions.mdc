@@ -1,4 +1,9 @@
-# Instructions Copilot
+---
+description: Instructions générales du projet devto-cli
+alwaysApply: true
+---
+
+# Instructions projet
 
 Ce dépôt est un CLI Node.js/TypeScript pour publier des articles markdown sur dev.to.
 
@@ -8,16 +13,16 @@ Les skills sont des guides spécialisés pour des tâches récurrentes :
 
 | Skill                                      | Description                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------ |
-| [development](skills/development/SKILL.md) | Guide de développement du CLI (compilation, conventions de sortie) |
-| [testing](skills/testing/SKILL.md)         | Guide de test du CLI (chemins articles, commandes de test)         |
+| [development](../skills/development/SKILL.md) | Guide de développement du CLI (compilation, conventions de sortie) |
+| [testing](../skills/testing/SKILL.md)         | Guide de test du CLI (chemins articles, commandes de test)         |
 
-## Prompt files disponibles
+## Commands disponibles
 
-Les prompt files sont des commandes `/` personnalisées :
+Les commands sont des commandes `/` personnalisées :
 
 | Commande | Description                                 |
 | -------- | ------------------------------------------- |
-| `/obey`  | Résumé des skills et configurations Copilot |
+| `/obey`  | Résumé des skills et configurations Cursor |
 
 ## Conventions générales
 

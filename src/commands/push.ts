@@ -243,16 +243,16 @@ async function processArticles(
 
     // Display result immediately
     spinner.stop();
+    if (diff && status === SyncStatus.updated) {
+      console.log(chalk.gray(`  First diff at line ${diff.line}:`));
+      console.log(chalk.gray(`    local : ${diff.local}`));
+      console.log(chalk.gray(`    remote: ${diff.remote}`));
+    }
     const statusStr = `[${status}]`.padEnd(14);
     const pubStr = `[${result.publishedStatus}]`.padEnd(12);
     console.log(`${statusStr} ${pubStr} ${newArticle.data.title}`);
     if (result.url && localArticles.length === 1) {
       console.log(chalk.cyan(`  → ${result.url}`));
-    }
-    if (diff && status === SyncStatus.updated) {
-      console.log(chalk.gray(`  First diff at line ${diff.line}:`));
-      console.log(chalk.gray(`    local : ${diff.local}`));
-      console.log(chalk.gray(`    remote: ${diff.remote}`));
     }
     if (errors.length > 0) {
       console.error(chalk.red(`  Error: ${errors.join(', ')}`));

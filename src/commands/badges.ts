@@ -17,6 +17,21 @@ const badgesDir = 'images/badges';
 const badgeWidth = 500;
 const badgeHeight = 208;
 
+// Markers delimiting the auto-generated badges section inside the output file.
+// When present, only the content between them is regenerated, preserving the
+// front matter and any custom prose (intro, footer) around it.
+const BADGES_START = '<!-- BADGES start -->';
+const BADGES_END = '<!-- BADGES end -->';
+
+// Replace the content between the BADGES markers, keeping everything else intact.
+function injectBadgesSection(content: string, block: string): string {
+  const startIndex = content.indexOf(BADGES_START);
+  const endIndex = content.indexOf(BADGES_END);
+  const before = content.slice(0, startIndex + BADGES_START.length);
+  const after = content.slice(endIndex);
+  return `${before}\n\n${block}\n\n${after}`;
+}
+
 type BadgesOptions = {
   devtoKey: string;
   repo: string;

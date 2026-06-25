@@ -176,6 +176,7 @@ Each badge displays the article's cover image on the left with the title, public
 - Cover images served from GitHub raw URLs (no extra files to commit)
 - Sorted by publication date (newest first) within each category
 - Only published articles with a date are included
+- Marker-aware: if the output file already contains `<!-- BADGES start -->` / `<!-- BADGES end -->` markers, only the section between them is regenerated, preserving the front matter and any custom prose around it
 
 **Usage:**
 ```bash
@@ -183,6 +184,36 @@ dev badges "*.md"                          # Generate _ARTICLES.md (HTML mode)
 dev badges "*.md" --jpg                    # Generate JPEG badges + _ARTICLES.md
 dev badges "*.md" --output README.md       # Custom output file
 ```
+
+**Keeping a "hub" article in sync (recommended workflow):**
+
+If you maintain a single dev.to article that lists all your articles (a "hub" / "all articles by theme" post), you can make `_ARTICLES.md` the source file for that article and let `dev badges` refresh only the badges, then push it like any other article — no more manual copy/paste.
+
+1. **One-time setup.** Make `_ARTICLES.md` a real article file: it needs the front matter (`id`, `title`, `tags`, `cover_image`…) of your hub article, your intro prose, and the two markers where the badges should go. The easiest way to get the front matter is to pull the existing article once from dev.to (e.g. via `dev init --pull`, or by copying its front matter from the dev.to editor). Then add the markers around the section to be generated:
+
+```markdown
+---
+id: 123456
+title: All Articles by Theme
+published: true
+tags: automation, devops, gitlab, kubernetes
+cover_image: https://…
+---
+
+Here are my articles, grouped by theme…
+
+<!-- BADGES start -->
+<!-- BADGES end -->
+```
+
+2. **Recurring updates.** Regenerate only the badges section, then push:
+
+```bash
+dev badges "*.md" --jpg     # refreshes content between the markers, front matter & prose untouched
+dev push _ARTICLES.md       # updates the article on dev.to (matched by its id, no duplicate)
+```
+
+> If `_ARTICLES.md` does **not** contain the markers (or doesn't exist), `dev badges` falls back to generating a full standalone file (heading + intro + badges, with markers added), exactly as before.
 
 **JPEG mode (`--jpg`):**
 

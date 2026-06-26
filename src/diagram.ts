@@ -10,12 +10,13 @@ import pako from 'pako';
 import puppeteer from 'puppeteer';
 import sharp from 'sharp';
 import { HttpsProxyAgent } from 'hpagent';
+import { renderChartPNG } from './chart.js';
 import { type Article } from './models.js';
 
 const debug = Debug('diagram');
 
 export type DiagramBlock = {
-  type: 'mermaid' | 'plantuml' | 'graphviz' | 'ditaa' | 'blockdiag' | 'svgbob' | 'gitlab-ci';
+  type: 'mermaid' | 'plantuml' | 'graphviz' | 'ditaa' | 'blockdiag' | 'svgbob' | 'gitlab-ci' | 'chart';
   content: string;
   name: string;
   originalText: string;
@@ -24,7 +25,7 @@ export type DiagramBlock = {
 
 const KROKI_URL = 'https://kroki.io';
 const WHICH_CMD = process.platform === 'win32' ? 'where' : 'which';
-const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'blockdiag', 'svgbob', 'gitlab-ci'];
+const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'blockdiag', 'svgbob', 'gitlab-ci', 'chart'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GITLAB_CI_ICONS_DIR = path.join(__dirname, '..', 'assets', 'icons');
@@ -335,8 +336,13 @@ export function extractDiagrams(content: string): DiagramBlock[] {
         }
         originalText += lines[startLine] + '\n' + diagramContent + '\n```';
 
-        // gitlab-ci blocks default to 'pipeline' when no diagram-name is provided
-        const effectiveName = (!nameMatch && type === 'gitlab-ci') ? 'pipeline' : diagramName;
+        // gitlab-ci / chart blocks default to a type-specific name when no diagram-name is provided
+        let effectiveName = diagramName;
+        if (!nameMatch && type === 'gitlab-ci') {
+          effectiveName = 'pipeline';
+        } else if (!nameMatch && type === 'chart') {
+          effectiveName = 'chart';
+        }
 
         diagrams.push({
           type: type as DiagramBlock['type'],
@@ -377,6 +383,12 @@ export async function generateDiagramImage(
   // gitlab-ci: local rendering via dot binary
   if (diagram.type === 'gitlab-ci') {
     await generateGitlabCiImage(diagram, outputPath);
+    return outputPath;
+  }
+
+  // chart: local rendering via C3.js + Puppeteer
+  if (diagram.type === 'chart') {
+    await renderChartPNG(diagram.content, outputPath);
     return outputPath;
   }
 

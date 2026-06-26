@@ -57,7 +57,7 @@ Commands:
   n, new <file>         Create new article
   r, rename <files>     Rename article files based on their title
     -d, --dry-run       Show what would be renamed without doing it
-  d, diaggen [files]    Generate diagram images from code blocks [default: posts/**/*.md]
+  d, diaggen [files]    Generate diagram and chart images from code blocks [default: posts/**/*.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
@@ -118,7 +118,7 @@ dev rename --dry-run "*.md" # Preview changes without renaming
 
 ### Diaggen
 
-`dev diaggen [files]` generates PNG images from diagram code blocks using Kroki (default: `*.md`).
+`dev diaggen [files]` generates PNG images from diagram and chart code blocks using Kroki and local renderers (default: `*.md`).
 
 See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
 
@@ -243,10 +243,13 @@ The CLI automatically converts diagram code blocks into images.
 
 **Supported types via [Kroki](https://kroki.io):** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob
 
-**Supported types via local rendering:** gitlab-ci (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed)
+**Supported types via local rendering:** gitlab-ci (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed), chart (C3.js bar/area charts — requires Google Chrome / Puppeteer)
 
 > **Why is `gitlab-ci` rendered locally instead of via Kroki?**
 > The `gitlab-ci` block is a custom CSV format (not supported by Kroki), converted locally to Graphviz DOT. The generated DOT references local icon files (✅, ⚠️, ⚙️ status icons) that Kroki's server cannot access. Additionally, Chrome headless is required to render emojis in color — server-side SVG-to-PNG conversion (as Kroki does) produces monochrome or missing emojis.
+
+> **Why is `chart` rendered locally instead of via Kroki?**
+> The `chart` block describes a C3.js chart (grouped bars, area splines, stacked percentages) with CSV data. Kroki does not support this format; Puppeteer renders the chart to PNG locally.
 
 **Workflow:**
 
@@ -292,6 +295,21 @@ name;stage;when;allowFailure;needs
 ````
 
 ![gitlab-ci example](gitlab-ci-example.png)
+
+**`chart` block format** — first line is a comma-separated list of chart options (chart type first, then `key=value` pairs), followed by CSV data: a header row starting with `x`, then one row per series:
+
+````markdown
+<!-- diagram-name: quarterly-sales -->
+```chart
+bar,x-type=category,x-label='Quarter',y-label='Revenue (k€)',y-range=0_100,width=1000,height=480
+x,Q1,Q2,Q3,Q4
+Product A,42,55,61,58
+Product B,30,28,35,40
+Support,8,12,10,15
+```
+````
+
+Common options: `x-type=category`, `x-label`, `y-label`, `y-range=min_max`, `width`, `height`, `stacked=true` (percentage stacked bars), `data-labels=true`, `legend=bottom`. Use `area-spline` as the chart type for area charts.
 
 **Notes:**
 - Images are cached by content checksum — rerun `dev diaggen` after modifications

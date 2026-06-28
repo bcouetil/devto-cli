@@ -8,6 +8,54 @@ import puppeteer from 'puppeteer';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CHART_ASSETS_DIR = path.join(__dirname, '..', 'assets', 'chart');
 
+/** Default font scale tuned for dev.to (images served at max width 800px). */
+const DEFAULT_FONT_SCALE = 1.6;
+
+/** C3 clips axis titles inside .c3-axis-* groups — unclip, raise, then fit the SVG viewBox. */
+const CHART_ONRENDERED = `
+, onrendered: function() {
+  var svg = d3.select('#chart svg');
+  svg.selectAll('.c3-axis-x, .c3-axis-y').attr('clip-path', null);
+  svg.selectAll('.c3-axis-x-label, .c3-axis-y-label').raise();
+
+  var yTicks = svg.selectAll('.c3-axis-y .tick').nodes();
+  if (yTicks.length > 1) {
+    d3.select(yTicks[yTicks.length - 1]).select('text').text('');
+  }
+
+  var xLabel = svg.select('.c3-axis-x-label');
+  if (!xLabel.empty()) {
+    xLabel.attr('transform', 'translate(0,-8)');
+  }
+
+  var xLabelEl = xLabel.node();
+  var legendItems = svg.selectAll('.c3-legend-item').nodes();
+  if (xLabelEl && legendItems.length) {
+    var xBottom = xLabelEl.getBoundingClientRect().bottom;
+    var legendTop = Math.min.apply(null, legendItems.map(function(n) {
+      return n.getBoundingClientRect().top;
+    }));
+    var shift = xBottom + 4 - legendTop;
+    if (shift > 0) {
+      legendItems.forEach(function(node) {
+        var sel = d3.select(node);
+        var t = sel.attr('transform') || '';
+        var m = t.match(/translate\\(([-\\d.]+)[, ]+([-\\d.]+)\\)/);
+        var dx = m ? +m[1] : 0;
+        var dy = m ? +m[2] : 0;
+        sel.attr('transform', 'translate(' + dx + ',' + (dy + shift) + ')');
+      });
+    }
+  }
+
+  var bbox = svg.node().getBBox();
+  var pad = 12;
+  svg
+    .attr('viewBox', [bbox.x - pad, bbox.y - pad, bbox.width + pad * 2, bbox.height + pad * 2].join(' '))
+    .attr('width', bbox.width + pad * 2)
+    .attr('height', bbox.height + pad * 2);
+}`;
+
 export type ParsedChartBlock = {
   attrsStr: string;
   csvContent: string;
@@ -24,6 +72,7 @@ export function parseChartBlock(content: string): ParsedChartBlock {
   if (newline === -1) {
     return { attrsStr: normalized, csvContent: '' };
   }
+
   return {
     attrsStr: normalized.slice(0, newline).trim(),
     csvContent: normalized.slice(newline + 1).trim()
@@ -41,6 +90,7 @@ export function parseChartAttrs(attrsStr: string): ChartAttrs {
       result[key] = value;
     }
   }
+
   return result;
 }
 
@@ -62,6 +112,84 @@ function toFileUrl(p: string): string {
   return `file://${p.replace(/\\/g, '/')}`;
 }
 
+function resolveFontScale(raw: string | undefined): number {
+  const scale = Number.parseFloat(raw ?? String(DEFAULT_FONT_SCALE));
+  return Number.isFinite(scale) && scale > 0 ? scale : DEFAULT_FONT_SCALE;
+}
+
+function jsString(value: string): string {
+  return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+function dataMinValue(columns: Array<Array<string | number>>, xType: string): number {
+  const startCol = xType === 'category' ? 1 : 0;
+  let min = Infinity;
+  for (const row of columns) {
+    for (let i = startCol; i < row.length; i++) {
+      const v = row[i];
+      if (typeof v === 'number') {
+        min = Math.min(min, v);
+      }
+    }
+  }
+
+  return min === Infinity ? 0 : min;
+}
+
+function buildXLabelJs(label: string | undefined): string {
+  if (!label) {
+    return 'undefined';
+  }
+
+  return `{ text: ${jsString(label)}, position: 'outer-right' }`;
+}
+
+function buildYAxisJs(a: ChartAttrs, columns: Array<Array<string | number>>, xType: string): string {
+  const [rawMin, rawMax] = (a['y-range'] || 'undefined_undefined').split('_');
+  const dataMin = dataMinValue(columns, xType);
+  const min = rawMin !== 'undefined' ? rawMin : dataMin >= 0 ? '0' : 'undefined';
+  const max = rawMax !== 'undefined' ? rawMax : 'undefined';
+  const zeroBaseline = min === '0';
+  const padding = zeroBaseline ? ', padding: { bottom: 0 }' : '';
+
+  return `min: ${min}, max: ${max}${padding}`;
+}
+
+function buildFontStyles(fontScale: number): string {
+  const base = Math.round(10 * fontScale);
+  const legend = Math.round(12 * fontScale);
+  const dataLabel = Math.round(12 * fontScale);
+
+  return `
+.c3 svg { font: ${base}px sans-serif; overflow: visible; }
+.c3-legend-item, .c3-axis-x-label, .c3-axis-y-label { font-size: ${legend}px; }
+.c3-axis-x-label, .c3-axis-y-label { font-style: italic; }
+.c3-chart-text { font-size: ${dataLabel}px; font-weight: 600; }
+.c3-chart-text .c3-text { fill: #333; }`;
+}
+
+function scaledHeight(baseHeight: number, fontScale: number, seriesCount: number): number {
+  const legendRows = Math.max(1, Math.ceil(seriesCount / 4));
+  const fontBonus = baseHeight * (fontScale - 1) * 0.1;
+  const legendBonus = Math.max(0, legendRows - 1) * 12 * fontScale;
+
+  return Math.round(baseHeight + fontBonus + legendBonus);
+}
+
+function resolveChartSize(
+  a: ChartAttrs,
+  columns: Array<Array<string | number>>
+): { width: number; height: number } {
+  const xType = a['x-type'] || 'indexed';
+  const fontScale = resolveFontScale(a['font-scale']);
+  const seriesCount = Math.max(0, columns.length - (xType === 'category' ? 1 : 0));
+
+  return {
+    width: Number.parseInt(a.width || '1000', 10),
+    height: scaledHeight(Number.parseInt(a.height || '500', 10), fontScale, seriesCount)
+  };
+}
+
 /**
  * Build a self-contained HTML page that renders a C3.js chart.
  */
@@ -70,18 +198,19 @@ export function buildChartHTML(attrsStr: string, csvContent: string): string {
   const columns = parseCSV(csvContent);
 
   const type = a.type || 'bar';
-  const height = a.height || '500';
-  const width = a.width || '1000';
   const horizontal = a.horizontal || 'false';
   const xType = a['x-type'] || 'indexed';
   const xTickAngle = a['x-tick-angle'] || '0';
-  const xLabel = a['x-label'] ? `'${a['x-label']}'` : 'undefined';
-  const yLabel = a['y-label'] ? `'${a['y-label']}'` : 'undefined';
+  const xLabel = buildXLabelJs(a['x-label']);
+  const yLabel = a['y-label'] ? jsString(a['y-label']) : 'undefined';
   const dataLabels = a['data-labels'] || 'false';
   const rawOrder = a.order;
   const order = rawOrder === undefined ? "'desc'" : rawOrder === 'null' ? 'null' : `'${rawOrder}'`;
-  const yRange = (a['y-range'] || 'undefined_undefined').split('_');
+  const yAxis = buildYAxisJs(a, columns, xType);
   const legend = a.legend || 'bottom';
+  const fontScale = resolveFontScale(a['font-scale']);
+  const { width, height } = resolveChartSize(a, columns);
+  const fontStyles = buildFontStyles(fontScale);
 
   const xData = xType === 'category' ? "x: 'x'," : '';
 
@@ -100,7 +229,11 @@ export function buildChartHTML(attrsStr: string, csvContent: string): string {
 <link rel="stylesheet" href="${c3CssUrl}">
 <script src="${d3Url}"></script>
 <script src="${c3JsUrl}"></script>
-<style>* { margin:0; padding:0; box-sizing:border-box; } body { background:white; }</style>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:white; }
+${fontStyles}
+</style>
 </head><body>
 <div id="chart"></div>
 <script>
@@ -121,12 +254,13 @@ c3.generate({
       tick: { rotate: ${xTickAngle}, multiline: false },
       label: ${xLabel}
     },
-    y: { min: ${yRange[0]}, max: ${yRange[1]}, label: ${yLabel} }
+    y: { ${yAxis}, label: ${yLabel} }
   },
   legend: { position: '${legend}' },
   color: {
     pattern: ['#8DBF44','#555555','#53A3DA','#D6D6B1','#D61F50','#888888','#FFE119','#000075','#E8575C','#56A29A']
   }
+${CHART_ONRENDERED}
 });
 </script>
 </body></html>`;
@@ -138,8 +272,8 @@ c3.generate({
 export async function renderChartPNG(content: string, outputPath: string): Promise<void> {
   const { attrsStr, csvContent } = parseChartBlock(content);
   const a = parseChartAttrs(attrsStr);
-  const w = Number.parseInt(a.width || '1000', 10);
-  const h = Number.parseInt(a.height || '500', 10);
+  const columns = parseCSV(csvContent);
+  const { width, height } = resolveChartSize(a, columns);
 
   const html = buildChartHTML(attrsStr, csvContent);
   const tmpFile = path.join(os.tmpdir(), `chart-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.html`);
@@ -156,13 +290,14 @@ export async function renderChartPNG(content: string, outputPath: string): Promi
   const browser = await puppeteer.launch(launchOptions);
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: w + 50, height: h + 100 });
+    await page.setViewport({ width: width + 50, height: height + 100, deviceScaleFactor: 2 });
     await page.goto(`file://${tmpFile}`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('#chart svg', { timeout: 5000 });
-    const el = await page.$('#chart');
+    const el = await page.$('#chart svg');
     if (!el) {
-      throw new Error('Chart element not found');
+      throw new Error('Chart SVG not found');
     }
+
     await el.screenshot({ path: outputPath });
   } finally {
     await browser.close();

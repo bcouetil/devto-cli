@@ -91,4 +91,10 @@ describe('devto CLI', () => {
       json: false
     });
   });
+
+  it('should run diaggen command with --no-cache', async () => {
+    const { generateDiagrams } = await import('../src/commands');
+    await run(['diaggen', 'posts/*.md', '--no-cache']);
+    expect(generateDiagrams).toHaveBeenCalledWith(['posts/*.md'], { noCache: true });
+  });
 });

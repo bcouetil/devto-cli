@@ -120,6 +120,8 @@ dev rename --dry-run "*.md" # Preview changes without renaming
 
 `dev diaggen [files]` generates PNG images from diagram and chart code blocks using Kroki and local renderers (default: `*.md`).
 
+Use `--no-cache` to regenerate images even when a cached PNG already exists (for example after changing chart rendering in the CLI).
+
 See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
 
 ### Toc
@@ -309,10 +311,10 @@ Support,8,12,10,15
 ```
 ````
 
-Common options: `x-type=category`, `x-label`, `y-label`, `y-range=min_max`, `width`, `height`, `stacked=true` (percentage stacked bars), `data-labels=true`, `legend=bottom`. Use `area-spline` as the chart type for area charts.
+Common options: `x-type=category`, `x-label`, `y-label`, `y-range=min_max`, `width`, `height`, `stacked=true` (percentage stacked bars), `data-labels=true`, `legend=bottom`, `font-scale=1.6` (default — larger text for dev.to's 800px image width). Use `area-spline` as the chart type for area charts.
 
 **Notes:**
-- Images are cached by content checksum — rerun `dev diaggen` after modifications
+- Images are cached by content checksum — rerun `dev diaggen` after block modifications, or `dev diaggen --no-cache` after CLI rendering changes
 - Original markdown files remain unchanged
 
 #### Reconcile with existing articles

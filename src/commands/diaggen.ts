@@ -8,7 +8,7 @@ import { createSpinner } from '../spinner.js';
 const debug = Debug('diaggen');
 
 export type DiaggenOptions = {
-  files?: string[];
+  noCache?: boolean;
 };
 
 export async function generateDiagrams(filesGlob?: string[], options: DiaggenOptions = {}) {
@@ -40,7 +40,9 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
         try {
           spinner.start(`Processing ${article.file}...`);
 
-          const diagramMap = await generateDiagramsForArticle(article);
+          const diagramMap = await generateDiagramsForArticle(article, {
+            noCache: options.noCache
+          });
           const diagramCount = diagramMap.size;
 
           spinner.stop();

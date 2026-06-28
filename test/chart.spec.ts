@@ -82,6 +82,27 @@ describe('chart block parsing', () => {
     expect(html).toContain("groups: [['Pleasure / Security', 'Action / Mastery']]");
     expect(html).toContain("type: 'bar'");
   });
+
+  it('should apply default font-scale and axis label fix for dev.to', () => {
+    const html = buildChartHTML(CHART_CSV.split('\n')[0], CHART_CSV.split('\n').slice(1).join('\n'));
+    expect(html).toContain('font: 16px sans-serif');
+    expect(html).toContain("position: 'outer-right'");
+    expect(html).toContain('min: 0, max: 10, padding: { bottom: 0 }');
+    expect(html).toContain('.c3-legend-item, .c3-axis-x-label, .c3-axis-y-label { font-size: 19px; }');
+    expect(html).toContain('.c3-axis-x-label, .c3-axis-y-label { font-style: italic; }');
+    expect(html).toContain('attr(\'clip-path\', null)');
+    expect(html).toContain("d3.select(yTicks[yTicks.length - 1]).select('text').text('')");
+  });
+
+  it('should default y axis to zero for all-positive data without y-range', () => {
+    const html = buildChartHTML('bar,x-type=category,x-label=Stage', 'x,A,B\nS,1,5');
+    expect(html).toContain('min: 0, max: undefined, padding: { bottom: 0 }');
+  });
+
+  it('should honor custom font-scale attribute', () => {
+    const html = buildChartHTML("bar,x-type=category,font-scale=2", 'x,A\nSeries,1');
+    expect(html).toContain('font: 20px sans-serif');
+  });
 });
 
 describe('chart checksum', () => {

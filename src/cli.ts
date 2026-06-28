@@ -27,6 +27,7 @@ Commands:
   r, rename <file>      Rename article file based on its title
     -d, --dry-run       Show what would be renamed without doing it
   d, diaggen [files]    Generate diagram and chart images from code blocks [default: *.md]
+    --no-cache          Regenerate images even when cached PNGs already exist
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: *.md]
@@ -52,7 +53,7 @@ General options:
 export async function run(args: string[]) {
   const options = minimist(args, {
     string: ['token', 'repo', 'branch', 'output'],
-    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc', 'jpg'],
+    boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc', 'jpg', 'cache'],
     alias: {
       v: 'version',
       e: 'reconcile',
@@ -117,7 +118,9 @@ export async function run(args: string[]) {
 
     case 'd':
     case 'diaggen': {
-      return generateDiagrams(normalizeFilePaths(parameters));
+      return generateDiagrams(normalizeFilePaths(parameters), {
+        noCache: options.cache === false
+      });
     }
 
     case 't':

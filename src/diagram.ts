@@ -361,19 +361,24 @@ export function extractDiagrams(content: string): DiagramBlock[] {
   return diagrams;
 }
 
+export type GenerateDiagramOptions = {
+  noCache?: boolean;
+};
+
 /**
  * Generate diagram image using Kroki.io
  */
 export async function generateDiagramImage(
   diagram: DiagramBlock,
-  outputDir: string
+  outputDir: string,
+  options: GenerateDiagramOptions = {}
 ): Promise<string> {
   const checksum = calculateChecksum(diagram.content);
   const filename = `${diagram.name}-${checksum}.png`;
   const outputPath = path.join(outputDir, filename);
 
   // Check if image already exists
-  if (await fs.pathExists(outputPath)) {
+  if (!options.noCache && (await fs.pathExists(outputPath))) {
     debug('Image already exists: %s', outputPath);
     return outputPath;
   }
@@ -454,7 +459,8 @@ export async function generateDiagramImage(
  * Generate all diagram images for an article
  */
 export async function generateDiagramsForArticle(
-  article: Article
+  article: Article,
+  options: GenerateDiagramOptions = {}
 ): Promise<Map<string, string>> {
   const diagrams = extractDiagrams(article.content);
 
@@ -470,7 +476,7 @@ export async function generateDiagramsForArticle(
 
   for (const diagram of diagrams) {
     try {
-      const imagePath = await generateDiagramImage(diagram, outputDir);
+      const imagePath = await generateDiagramImage(diagram, outputDir, options);
       diagramMap.set(diagram.originalText, imagePath);
     } catch (error) {
       debug('Error generating diagram: %s', error);

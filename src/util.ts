@@ -2,6 +2,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { createInterface } from 'node:readline';
 import fs from 'fs-extra';
+import { execa } from 'execa';
 import { type Article, type Repository } from './models.js';
 
 const hostUrl = 'https://raw.githubusercontent.com';
@@ -76,6 +77,17 @@ export function scaleNumber(number: number, maxLength = 5): string {
   }
 
   return result + suffix[index];
+}
+
+export async function openUrlInBrowser(url: string): Promise<void> {
+  const platform = process.platform;
+  if (platform === 'darwin') {
+    await execa('open', [url]);
+  } else if (platform === 'win32') {
+    await execa('cmd', ['/c', 'start', '', url]);
+  } else {
+    await execa('xdg-open', [url]);
+  }
 }
 
 export async function prompt(question: string): Promise<string> {

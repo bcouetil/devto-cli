@@ -22,6 +22,7 @@ import { createSpinner } from '../spinner.js';
 import { replaceDiagramsInArticle } from '../diagram.js';
 import { loadAnsiColors, replaceAnsiBlocksInArticle } from '../ansi.js';
 import { updateToc, needsTocUpdate } from '../toc.js';
+import { openUrlInBrowser } from '../util.js';
 import { type Article, type Repository } from '../models.js';
 
 const debug = Debug('push');
@@ -253,6 +254,13 @@ async function processArticles(
     console.log(`${statusStr} ${pubStr} ${newArticle.data.title}`);
     if (result.url && localArticles.length === 1) {
       console.log(chalk.cyan(`  → ${result.url}`));
+      if (!options.dryRun && !result.errors && !process.env.CI) {
+        try {
+          await openUrlInBrowser(result.url);
+        } catch (error) {
+          debug('Could not open browser: %s', String(error));
+        }
+      }
     }
     if (errors.length > 0) {
       console.error(chalk.red(`  Error: ${errors.join(', ')}`));

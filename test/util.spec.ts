@@ -9,9 +9,13 @@ jest.unstable_mockModule("fs-extra", () => ({
   }
 }));
 
-const { convertPathToPosix, updateRelativeImageUrls, getImageUrls, scaleNumber, replaceInFile } = await import(
-  "../src/util"
-);
+jest.unstable_mockModule("execa", () => ({
+  __esModule: true,
+  execa: jest.fn()
+}));
+
+const { convertPathToPosix, updateRelativeImageUrls, getImageUrls, scaleNumber, replaceInFile, openUrlInBrowser } =
+  await import("../src/util");
 
 describe("utilities", () => {
   describe("convertPathToPosix", () => {
@@ -101,6 +105,22 @@ describe("utilities", () => {
 
     it("should scale to K and round number with specified length", () => {
       expect(scaleNumber(12_365, 6)).toEqual("12.37K");
+    });
+  });
+
+  describe("openUrlInBrowser", () => {
+    it("should open url with platform-specific command", async () => {
+      const execa: any = (await import("execa")).execa;
+      const platform = Object.getOwnPropertyDescriptor(process, "platform");
+      Object.defineProperty(process, "platform", { value: "darwin" });
+
+      await openUrlInBrowser("https://dev.to/example");
+
+      expect(execa).toHaveBeenCalledWith("open", ["https://dev.to/example"]);
+
+      if (platform) {
+        Object.defineProperty(process, "platform", platform);
+      }
     });
   });
 

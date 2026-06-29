@@ -231,6 +231,8 @@ If an article have an `id` property defined in front matter it will be updated, 
 
 When an article is pushed with `published: true`, a new property `date` will be added to the local file to recird the article's publication date.
 
+When pushing a single article, the CLI opens its dev.to URL in your default browser after a successful push (skipped in dry-run mode and in CI).
+
 ### Images hosting
 
 You can add image files in your repository along your markdown and link to them directly. 

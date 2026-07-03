@@ -23,6 +23,7 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   'k8s': ['k8s', 'kubernetes'],
   'gitlab': ['gitlab'],
   'git': ['git'],
+  'ppware': ['ppware', 'peopleware'],
   'misc': ['misc'],
 };
 

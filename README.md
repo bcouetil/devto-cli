@@ -173,7 +173,7 @@ Links: 95 OK | 1 broken
 Each badge displays the article's cover image on the left with the title, publication date, and stats (reactions, reading time) on the right, fetched from the dev.to API.
 
 **Features:**
-- Articles grouped by category (extracted from filename prefix: GITLAB, K8S, GIT, MISC)
+- Articles grouped by category (extracted from filename prefix: GITLAB, K8S, PPWARE, GIT, MISC)
 - 2-column grid layout using HTML tables (GitHub-compatible)
 - Cover images served from GitHub raw URLs (no extra files to commit)
 - Sorted by publication date (newest first) within each category

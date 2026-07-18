@@ -5,10 +5,11 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import dotenv from 'dotenv';
 import sharp from 'sharp';
-import { getArticlesFromFiles } from '../article.js';
+import { getArticlesFromFiles, FrontmatterValidationError } from '../article.js';
 import { getAllArticles } from '../api.js';
 import { createSpinner } from '../spinner.js';
 import { type Article, type RemoteArticleData, type Repository } from '../models.js';
+import { reportFrontmatterValidationError } from './push.js';
 
 const debug = Debug('badges');
 
@@ -477,6 +478,10 @@ export async function badges(files?: string[], options?: Partial<BadgesOptions>)
   } catch (error) {
     spinner.stop();
     process.exitCode = -1;
+    if (error instanceof FrontmatterValidationError) {
+      reportFrontmatterValidationError(error);
+      return;
+    }
     console.error(chalk.red(`✗ Error generating badges: ${(error as Error).message}`));
     debug('Full error: %O', error);
   }

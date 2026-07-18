@@ -48,7 +48,7 @@ DEVTO_FOOTER_FILE=path/to/further-readings.md
 Then run commands from that directory:
 
 ```
-Usage: dev <init|new|push|stats|diaggen|toc|checklinks|rename|badges> [options]
+Usage: dev <init|new|push|publish|stats|diaggen|toc|checklinks|rename|badges> [options]
 
 Commands:
   i, init               Init current dir as an article repository
@@ -61,6 +61,10 @@ Commands:
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
   p, push [files]       Push articles to dev.to [default: posts/**/*.md]
+    -d, --dry-run       Do not make actual changes on dev.to
+    -e, --reconcile     Reconcile articles without id using their title
+    -u, --update-toc    Update table of contents before pushing
+  publish <files>       Publish drafts as new articles (fixes creation order)
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
     -u, --update-toc    Update table of contents before pushing
@@ -225,6 +229,8 @@ Generates individual JPEG badge files in `images/badges/` with the article cover
 
 `dev push [files]` pushes all updates for the specified files to dev.to (`*.md` by default, globs supported).
 
+Before any API call, the CLI validates YAML frontmatter on every matched file. If a file has invalid frontmatter (e.g. an unclosed quote), the push aborts and lists the file(s) with the parser error.
+
 This command only updates articles that have changes.
 
 If an article have an `id` property defined in front matter it will be updated, otherwise a new article will be created and the local file will be updated with the `id`. You can also [reconcile articles](#reconcile-with-existing-articles) without an `id` property using their title if needed.
@@ -232,6 +238,27 @@ If an article have an `id` property defined in front matter it will be updated, 
 When an article is pushed with `published: true`, a new property `date` will be added to the local file to recird the article's publication date.
 
 When pushing a single article, the CLI opens its dev.to URL in your default browser after a successful push (skipped in dry-run mode and in CI).
+
+### Publish
+
+`dev publish <files>` publishes draft articles as **new** articles on dev.to, so their creation date matches the publication date.
+
+Why? Publishing an existing draft with `dev push` keeps the original `created_at`. The dev.to admin defaults to creation order, and sorting by publication date hides drafts — so draft-era creation dates scramble the published list. `created_at` cannot be overridden via the API.
+
+For each unpublished article, the command:
+
+1. Opens the remote preview's delete confirmation page in your browser (you delete it manually — the API cannot delete articles)
+2. Asks for confirmation (`y`) — anything else **stops the process** (no local changes, no push)
+3. Sets `published: true` and removes `id` / `link` locally
+4. Runs `dev push` to create a fresh published article
+
+Already published articles are skipped. At least one file must be specified (no default glob).
+
+```bash
+dev publish my-draft.md
+dev publish --dry-run my-draft.md
+dev publish --update-toc my-draft.md
+```
 
 ### Images hosting
 

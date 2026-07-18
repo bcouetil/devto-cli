@@ -13,7 +13,8 @@ import {
   saveArticleToFile,
   reconcileLocalArticles,
   checkArticleForOfflineImages,
-  updateArticleFooter
+  updateArticleFooter,
+  FrontmatterValidationError
 } from '../article.js';
 import { getAllArticles, updateRemoteArticle, getUserOrganizations, getOrganizationId } from '../api.js';
 import { getBranch, getRepository } from '../repo.js';
@@ -57,6 +58,18 @@ export function formatErrors(results: PushResult[]) {
   }
 
   return output;
+}
+
+export function reportFrontmatterValidationError(error: FrontmatterValidationError): void {
+  for (const result of error.results) {
+    if (result.ok) {
+      console.error(chalk.green(`✓ ${result.file}`));
+    } else {
+      console.error(chalk.red(`✗ ${result.file}`));
+      console.error(chalk.red(`  ${result.message}`));
+    }
+  }
+  console.error(chalk.red(`Invalid frontmatter — aborting.`));
 }
 
 export function formatResultsTable(results: PushResult[]) {
@@ -302,6 +315,26 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     console.warn(chalk.yellow(`Running in dry run mode, local and remote changes will be skipped`));
   }
 
+  // Validate frontmatter before any network call
+  let articles: Article[];
+  try {
+    articles = await getArticlesFromFiles(files);
+  } catch (error) {
+    if (error instanceof FrontmatterValidationError) {
+      process.exitCode = -1;
+      reportFrontmatterValidationError(error);
+      return null;
+    }
+    throw error;
+  }
+
+  console.info(`Found ${chalk.green(articles.length)} article(s)`);
+
+  if (articles.length === 0) {
+    console.warn(`No articles to push.`);
+    return [];
+  }
+
   const spinner = createSpinner(debug);
 
   try {
@@ -334,14 +367,6 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
     }
 
     debug('branch: %s', branch);
-
-    let articles = await getArticlesFromFiles(files);
-    console.info(`Found ${chalk.green(articles.length)} article(s)`);
-
-    if (articles.length === 0) {
-      console.warn(`No articles to push.`);
-      return [];
-    }
 
     spinner.text = 'Retrieving articles from dev.to…';
     spinner.start();

@@ -5,6 +5,7 @@ jest.unstable_mockModule('../src/commands', () => ({
   __esModule: true,
   init: jest.fn(),
   push: jest.fn(),
+  publish: jest.fn(),
   createNew: jest.fn(),
   showStats: jest.fn(),
   generateDiagrams: jest.fn(),
@@ -72,6 +73,21 @@ describe('devto CLI', () => {
       checkImages: true,
       useOrganization: true,
       updateToc: false
+    });
+  });
+
+  it('should run publish command', async () => {
+    const { publish } = await import('../src/commands');
+    await run(['publish', 'draft.md', '--token=123', '--repo=git/repo', '--dry-run', '--update-toc']);
+    expect(publish).toHaveBeenCalledWith(['draft.md'], {
+      devtoKey: '123',
+      repo: 'git/repo',
+      branch: undefined,
+      dryRun: true,
+      reconcile: false,
+      checkImages: true,
+      useOrganization: true,
+      updateToc: true
     });
   });
 

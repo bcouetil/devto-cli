@@ -1,9 +1,10 @@
 import Debug from 'debug';
 import chalk from 'chalk';
 import pMap from 'p-map';
-import { getArticlesFromFiles } from '../article.js';
+import { getArticlesFromFiles, FrontmatterValidationError } from '../article.js';
 import { generateDiagramsForArticle } from '../diagram.js';
 import { createSpinner } from '../spinner.js';
+import { reportFrontmatterValidationError } from './push.js';
 
 const debug = Debug('diaggen');
 
@@ -82,6 +83,10 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
     }
   } catch (error) {
     spinner.stop();
+    if (error instanceof FrontmatterValidationError) {
+      reportFrontmatterValidationError(error);
+      return;
+    }
     console.error(chalk.red('Error:'), String(error));
     throw error;
   }

@@ -88,15 +88,70 @@ export async function updateArticleFooter(article: Article, footerFilePath: stri
   return { ...article, content: newContent };
 }
 
+export type FrontmatterParseError = {
+  file: string;
+  message: string;
+};
+
+export type FrontmatterCheckResult =
+  | { file: string; ok: true }
+  | { file: string; ok: false; message: string };
+
+export class FrontmatterValidationError extends Error {
+  readonly results: FrontmatterCheckResult[];
+
+  constructor(results: FrontmatterCheckResult[]) {
+    const errorCount = results.filter((r) => !r.ok).length;
+    super(`Invalid frontmatter in ${errorCount} file(s)`);
+    this.name = 'FrontmatterValidationError';
+    this.results = results;
+  }
+
+  get errors(): FrontmatterParseError[] {
+    return this.results
+      .filter((r): r is Extract<FrontmatterCheckResult, { ok: false }> => !r.ok)
+      .map(({ file, message }) => ({ file, message }));
+  }
+}
+
 export async function getArticlesFromFiles(filesGlob: string[]): Promise<Article[]> {
   const files: string[] = await globby(filesGlob);
-  const articles = await Promise.all(files.map(getArticleFromFile));
-  return articles.filter((article) => article !== null);
+  const articles: Article[] = [];
+  const results: FrontmatterCheckResult[] = [];
+
+  for (const file of files) {
+    try {
+      const article = await getArticleFromFile(file);
+      results.push({ file, ok: true });
+      if (article) {
+        articles.push(article);
+      }
+    } catch (error) {
+      if (error instanceof FrontmatterValidationError) {
+        results.push(...error.results);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  if (results.some((r) => !r.ok)) {
+    throw new FrontmatterValidationError(results);
+  }
+
+  return articles;
 }
 
 async function getArticleFromFile(file: string): Promise<Article | null> {
   const content = await fs.readFile(file, 'utf8');
-  const article = matter(content, { language: 'yaml' });
+
+  let article: matter.GrayMatterFile<string>;
+  try {
+    article = matter(content, { language: 'yaml' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new FrontmatterValidationError([{ file, ok: false, message }]);
+  }
 
   // An article must have a least a title property and sync should not be disabled
   if (!article.data.title || (article.data.devto_sync !== undefined && !article.data.devto_sync)) {

@@ -378,7 +378,6 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
       orgInfo = await getUserOrganizations(options.devtoKey);
       if (orgInfo) {
         debug('Will use organization: %s (ID: %s)', orgInfo.username, orgInfo.id);
-        // Process all articles to set organization info
         let updatedCount = 0;
         for (const article of articles) {
           // Set organization only for articles that don't have it
@@ -394,18 +393,24 @@ export async function push(files: string[], options?: Partial<PushOptions>): Pro
           // Resolve organization_id from organization name for API calls (not saved to file)
           // Skip if organization is explicitly set to '<none>'
           if (article.data.organization && article.data.organization !== '<none>') {
-            const articleOrgId = await getOrganizationId(article.data.organization, options.devtoKey);
+            const articleOrgId =
+              article.data.organization === orgInfo.username
+                ? orgInfo.id
+                : await getOrganizationId(article.data.organization, options.devtoKey);
             if (articleOrgId) {
               article.data.organization_id = articleOrgId;
             }
           }
         }
         if (updatedCount > 0) {
+          spinner.stop();
           console.info(`Added organization ${chalk.cyan(orgInfo.username)} to ${chalk.green(updatedCount)} new article(s)`);
+          spinner.start();
         }
       }
     }
 
+    spinner.text = 'Retrieving articles from dev.to…';
     const remoteArticles = await getRemoteArticles(options.devtoKey);
 
     if (options.reconcile) {

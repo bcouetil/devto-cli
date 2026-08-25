@@ -55,7 +55,15 @@ async function retryRequest(fn: () => Promise<RemoteArticleData>, retries: numbe
   }
 }
 
+const organizationIdCache = new Map<string, number>();
+
 export async function getOrganizationId(orgUsername: string, devtoKey?: string): Promise<number | null> {
+  const cached = organizationIdCache.get(orgUsername);
+  if (cached !== undefined) {
+    debug('Using cached organization ID for %s: %s', orgUsername, cached);
+    return cached;
+  }
+
   try {
     const options: any = {
       ...httpOptions,
@@ -69,6 +77,7 @@ export async function getOrganizationId(orgUsername: string, devtoKey?: string):
     const result = await got<any>(`${apiUrl}/organizations/${orgUsername}`, options);
     const orgId = result.body.id;
     debug('Found organization %s with ID: %s', orgUsername, orgId);
+    organizationIdCache.set(orgUsername, orgId);
     return orgId;
   } catch (error) {
     debug('Error fetching organization %s: %s', orgUsername, String(error));

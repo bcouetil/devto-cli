@@ -23,12 +23,27 @@ export type DiagramBlock = {
   imagePath?: string;
 };
 
-const KROKI_URL = 'https://kroki.io';
+const DEFAULT_KROKI_URL = 'https://kroki.io';
 const WHICH_CMD = process.platform === 'win32' ? 'where' : 'which';
 const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'blockdiag', 'svgbob', 'gitlab-ci', 'chart'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GITLAB_CI_ICONS_DIR = path.join(__dirname, '..', 'assets', 'icons');
+
+/**
+ * Kroki base URL. Override with KROKI_URL in `.env` (e.g. http://localhost:8000).
+ * Resolved at call time so dotenv has already been loaded.
+ */
+export function getKrokiUrl(): string {
+  let raw = (process.env.KROKI_URL || DEFAULT_KROKI_URL).trim().replace(/\/+$/, '');
+  if (!raw) {
+    raw = DEFAULT_KROKI_URL;
+  }
+  if (!/^https?:\/\//i.test(raw)) {
+    raw = `http://${raw}`;
+  }
+  return raw;
+}
 
 // Configure proxy for corporate environments
 const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
@@ -366,7 +381,7 @@ export type GenerateDiagramOptions = {
 };
 
 /**
- * Generate diagram image using Kroki.io
+ * Generate diagram image using a local renderer (chart, gitlab-ci) or Kroki
  */
 export async function generateDiagramImage(
   diagram: DiagramBlock,
@@ -401,7 +416,8 @@ export async function generateDiagramImage(
     const normalizedContent = diagram.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     // Use POST method to avoid URL length limits
-    const url = `${KROKI_URL}/${diagram.type}/png`;
+    const krokiUrl = getKrokiUrl();
+    const url = `${krokiUrl}/${diagram.type}/png`;
     debug('Requesting diagram from Kroki (POST): %s', url);
     debug('Diagram content length: %d bytes', normalizedContent.length);
 
@@ -439,19 +455,18 @@ export async function generateDiagramImage(
     debug('Generated diagram image: %s', outputPath);
     return outputPath;
   } catch (error: any) {
-    // Provide helpful hint for EACCES errors (typically proxy issues)
-    if (error?.code === 'EACCES') {
-      console.error('\n⚠️  Access denied (EACCES) when connecting to Kroki.io');
-      console.error('💡 If you are behind a corporate proxy, make sure HTTPS_PROXY is set:');
-      console.error('   PowerShell: $env:HTTPS_PROXY = "http://proxy.example.com:3131"');
-      console.error('   Bash/Zsh:   export HTTPS_PROXY="http://proxy.example.com:3131"\n');
-    }
-
-    const errorMessage = error?.response?.statusCode
-      ? `HTTP ${error.response.statusCode}: ${error.response.statusMessage || 'Unknown error'}`
+    const status = error?.response?.statusCode;
+    const rawBody = error?.response?.body;
+    const bodyText = rawBody
+      ? (Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody)).replace(/\s+/g, ' ').trim().slice(0, 400)
+      : '';
+    const errorMessage = status
+      ? (bodyText ? `HTTP ${status}: ${bodyText}` : `HTTP ${status}: ${error.response.statusMessage || 'Unknown error'}`)
       : error?.message || String(error);
     debug('Full error details: %O', error);
-    throw new Error(`Failed to generate diagram image for "${diagram.name}": ${errorMessage}`);
+    throw new Error(
+      `Failed to generate ${diagram.type} diagram "${diagram.name}" via ${getKrokiUrl()}: ${errorMessage}`
+    );
   }
 }
 

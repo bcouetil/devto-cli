@@ -2,7 +2,7 @@ import Debug from 'debug';
 import chalk from 'chalk';
 import pMap from 'p-map';
 import { getArticlesFromFiles, FrontmatterValidationError } from '../article.js';
-import { generateDiagramsForArticle } from '../diagram.js';
+import { generateDiagramsForArticle, getKrokiUrl } from '../diagram.js';
 import { createSpinner } from '../spinner.js';
 import { reportFrontmatterValidationError } from './push.js';
 
@@ -27,6 +27,8 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
       console.log(chalk.yellow('No articles found.'));
       return;
     }
+
+    console.log(chalk.gray(`Kroki server: ${getKrokiUrl()} (mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob)`));
 
     if (articles.length > 1) {
       console.log(chalk.blue(`Found ${articles.length} article(s), scanning for diagrams...\n`));

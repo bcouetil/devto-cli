@@ -89,8 +89,8 @@ export async function run(args: string[]) {
     debug.enable('*');
   }
 
+  dotenv.config();
   if (!options.token) {
-    dotenv.config();
     options.token = process.env.DEVTO_TOKEN;
   }
 

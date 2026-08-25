@@ -8,7 +8,7 @@ _This is an opinionated fork of [devto-cli](https://github.com/sinedied/devto-cl
 
 This fork adds:
 - Proxy support for corporate environments (HTTP/HTTPS_PROXY)
-- Automatic diagram generation using [Kroki](https://kroki.io)
+- Automatic diagram generation using [Kroki](https://kroki.io) (override with `KROKI_URL`)
 - Organization publishing support
 - Table of contents generation
 - Broken link checking
@@ -39,6 +39,9 @@ DEVTO_ASSETS_PUBLIC_REPO=username/articles
 DEVTO_ASSETS_PUBLIC_BRANCH=main
 DEVTO_ORG=your-organization
 DEVTO_FOOTER_FILE=path/to/further-readings.md
+
+# Optional: local Kroki instance (default: https://kroki.io)
+# KROKI_URL=http://localhost:8000
 
 # Override ANSI block colors (optional)
 # ANSI_RED=#e74c3c
@@ -122,7 +125,7 @@ dev rename --dry-run "*.md" # Preview changes without renaming
 
 ### Diaggen
 
-`dev diaggen [files]` generates PNG images from diagram and chart code blocks using Kroki and local renderers (default: `*.md`).
+`dev diaggen [files]` generates PNG images from diagram and chart code blocks using [Kroki](https://kroki.io) (or `KROKI_URL`) and local renderers for chart/gitlab-ci (default: `*.md`).
 
 Use `--no-cache` to regenerate images even when a cached PNG already exists (for example after changing chart rendering in the CLI).
 
@@ -272,7 +275,7 @@ All absolute image links will be left untouched, so you can choose to host your 
 
 The CLI automatically converts diagram code blocks into images.
 
-**Supported types via [Kroki](https://kroki.io):** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob
+**Supported types via [Kroki](https://kroki.io):** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob — default server `https://kroki.io`, override with `KROKI_URL` in `.env` (e.g. `KROKI_URL=http://localhost:8000`). Mermaid needs Kroki's companion containers, not the gateway alone.
 
 **Supported types via local rendering:** gitlab-ci (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed), chart (C3.js bar/area charts — requires Google Chrome / Puppeteer)
 
@@ -544,7 +547,7 @@ dev push
 
 The proxy configuration will be used for:
 - API calls to dev.to
-- Diagram generation using Kroki
+- Diagram generation using Kroki (PlantUML, Graphviz, …) — server from `KROKI_URL`, default `https://kroki.io`
 - Image availability checks
 
 If you experience issues with self-signed certificates in your corporate proxy, the CLI is configured to accept them for diagram generation.

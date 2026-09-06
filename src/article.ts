@@ -114,8 +114,22 @@ export class FrontmatterValidationError extends Error {
   }
 }
 
+const IGNORED_ARTICLE_BASENAMES = new Set(['readme.md']);
+
+function isIgnoredArticleFile(file: string): boolean {
+  return IGNORED_ARTICLE_BASENAMES.has(path.basename(file).toLowerCase());
+}
+
 export async function getArticlesFromFiles(filesGlob: string[]): Promise<Article[]> {
-  const files: string[] = await globby(filesGlob);
+  // expandDirectories is off so `dev push *` (shell-expanded dirs) stays in the current folder
+  const files: string[] = (await globby(filesGlob, { expandDirectories: false })).filter((file) => {
+    if (isIgnoredArticleFile(file)) {
+      debug('File "%s" ignored (README)', file);
+      return false;
+    }
+
+    return true;
+  });
   const articles: Article[] = [];
   const results: FrontmatterCheckResult[] = [];
 

@@ -60,10 +60,10 @@ Commands:
   n, new <file>         Create new article
   r, rename <files>     Rename article files based on their title
     -d, --dry-run       Show what would be renamed without doing it
-  d, diaggen [files]    Generate diagram and chart images from code blocks [default: posts/**/*.md]
+  d, diaggen [files]    Generate diagram and chart images from code blocks [default: *.md]
   t, toc [files]        Update table of contents in articles [default: *.md]
   c, checklinks [files] Check for broken links in articles [default: *.md]
-  p, push [files]       Push articles to dev.to [default: posts/**/*.md]
+  p, push [files]       Push articles to dev.to [default: *.md]
     -d, --dry-run       Do not make actual changes on dev.to
     -e, --reconcile     Reconcile articles without id using their title
     -u, --update-toc    Update table of contents before pushing
@@ -230,7 +230,7 @@ Generates individual JPEG badge files in `images/badges/` with the article cover
 
 ### Push
 
-`dev push [files]` pushes all updates for the specified files to dev.to (`*.md` by default, globs supported).
+`dev push [files]` pushes all updates for the specified files to dev.to (`*.md` by default, globs supported). Only files in the current directory are matched: `dev push *` does not recurse into subfolders, and `README.md` is always skipped. To push a nested article, pass its path explicitly (`dev push docs/article.md` or `dev push docs/*.md`).
 
 Before any API call, the CLI validates YAML frontmatter on every matched file. If a file has invalid frontmatter (e.g. an unclosed quote), the push aborts and lists the file(s) with the parser error.
 

@@ -58,7 +58,8 @@ const categoryConfig: Record<string, { emoji: string; label: string; order: numb
   GITLAB: { emoji: '🦊', label: 'GitLab / 🔀 Git', order: 1 },
   K8S: { emoji: '☸️', label: 'Kubernetes', order: 2 },
   PPWARE: { emoji: '🧠', label: 'Peopleware', order: 3 },
-  MISC: { emoji: '📝', label: 'Miscellaneous', order: 4 }
+  EGO: { emoji: '🪞', label: 'Ego development', order: 4 },
+  MISC: { emoji: '📝', label: 'Miscellaneous', order: 5 }
 };
 
 function extractCategory(filename: string): string | null {

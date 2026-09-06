@@ -24,6 +24,7 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   'gitlab': ['gitlab'],
   'git': ['git'],
   'ppware': ['ppware', 'peopleware'],
+  'ego': ['ego', 'development'],
   'misc': ['misc'],
 };
 

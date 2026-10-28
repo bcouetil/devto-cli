@@ -38,6 +38,7 @@ DEVTO_TOKEN=your_dev_to_api_token
 DEVTO_ASSETS_PUBLIC_REPO=username/articles
 DEVTO_ASSETS_PUBLIC_BRANCH=main
 DEVTO_ORG=your-organization
+DEVTO_ORG_IDS=your-organization=>999;
 DEVTO_FOOTER_FILE=path/to/further-readings.md
 
 # Optional: local Kroki instance (default: https://kroki.io)
@@ -478,7 +479,7 @@ To publish articles under a dev.to organization instead of your personal account
 
 When you run `dev push`, the CLI will:
 - Automatically add the organization field to articles that don't have it
-- Resolve the organization ID from the organization username via the dev.to API
+- Resolve the organization ID from `DEVTO_ORG_IDS` (`name=>id;`, semicolon-separated, trailing `;`). A name missing from that map is looked up via the dev.to API, and the CLI prints the id plus the line to append to `.env`.
 - Publish articles to the specified organization
 
 **Publishing under your personal account:**

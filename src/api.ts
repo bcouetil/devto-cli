@@ -1,8 +1,6 @@
-import os from 'node:os';
-import path from 'node:path';
 import Debug from 'debug';
+import chalk from 'chalk';
 import got, { type Got, RequestError } from 'got';
-import fs from 'fs-extra';
 import { HttpsProxyAgent } from 'hpagent';
 import matter from 'gray-matter';
 import pThrottle from 'p-throttle';
@@ -60,7 +58,47 @@ async function retryRequest(fn: () => Promise<RemoteArticleData>, retries: numbe
 
 const organizationIdCache = new Map<string, number>();
 
+/** `DEVTO_ORG_IDS=acme=>999;other=>99;` — skip the organization API when the name is listed. */
+function organizationIdFromEnv(orgUsername: string): number | undefined {
+  const raw = process.env.DEVTO_ORG_IDS;
+  if (!raw) {
+    return undefined;
+  }
+
+  for (const entry of raw.split(';')) {
+    const separator = entry.includes('=>') ? '=>' : '=';
+    const [name, idText] = entry.split(separator);
+    if (!name || idText === undefined) {
+      continue;
+    }
+
+    const id = Number(idText.trim());
+    if (name.trim() === orgUsername && Number.isInteger(id)) {
+      return id;
+    }
+  }
+
+  return undefined;
+}
+
+function organizationIdEnvLine(orgUsername: string, orgId: number): string {
+  const entry = `${orgUsername}=>${orgId};`;
+  const raw = (process.env.DEVTO_ORG_IDS || '').trim();
+  if (!raw) {
+    return `DEVTO_ORG_IDS=${entry}`;
+  }
+
+  const prefix = raw.endsWith(';') ? raw : `${raw};`;
+  return `DEVTO_ORG_IDS=${prefix}${entry}`;
+}
+
 export async function getOrganizationId(orgUsername: string, devtoKey?: string): Promise<number | null> {
+  const fromEnv = organizationIdFromEnv(orgUsername);
+  if (fromEnv !== undefined) {
+    debug('Using organization ID from DEVTO_ORG_IDS for %s: %s', orgUsername, fromEnv);
+    return fromEnv;
+  }
+
   const cached = organizationIdCache.get(orgUsername);
   if (cached !== undefined) {
     debug('Using cached organization ID for %s: %s', orgUsername, cached);
@@ -81,6 +119,9 @@ export async function getOrganizationId(orgUsername: string, devtoKey?: string):
     const orgId = result.body.id;
     debug('Found organization %s with ID: %s', orgUsername, orgId);
     organizationIdCache.set(orgUsername, orgId);
+    console.info(
+      `Append ${chalk.bold(organizationIdEnvLine(orgUsername, orgId))} to ${chalk.bold('.env')} to skip the lookup`
+    );
     return orgId;
   } catch (error) {
     debug('Error fetching organization %s: %s', orgUsername, String(error));

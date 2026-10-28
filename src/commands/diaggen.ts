@@ -28,7 +28,7 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
       return;
     }
 
-    console.log(chalk.gray(`Kroki server: ${getKrokiUrl()} (mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob)`));
+    console.log(chalk.gray(`Kroki server: ${getKrokiUrl()} (fence language = diagram type; gitlab-ci and chart render locally)`));
 
     if (articles.length > 1) {
       console.log(chalk.blue(`Found ${articles.length} article(s), scanning for diagrams...\n`));

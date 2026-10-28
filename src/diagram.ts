@@ -16,7 +16,7 @@ import { type Article } from './models.js';
 const debug = Debug('diagram');
 
 export type DiagramBlock = {
-  type: 'mermaid' | 'plantuml' | 'graphviz' | 'ditaa' | 'blockdiag' | 'svgbob' | 'gitlab-ci' | 'chart';
+  type: string;
   content: string;
   name: string;
   originalText: string;
@@ -25,7 +25,8 @@ export type DiagramBlock = {
 
 const DEFAULT_KROKI_URL = 'https://kroki.io';
 const WHICH_CMD = process.platform === 'win32' ? 'where' : 'which';
-const SUPPORTED_DIAGRAM_TYPES = ['mermaid', 'plantuml', 'graphviz', 'ditaa', 'blockdiag', 'svgbob', 'gitlab-ci', 'chart'];
+// Kroki's Vega PNG renderer needs node-canvas, which the official image does not ship. SVG does render.
+const KROKI_SVG_TYPES = ['vega', 'vegalite'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GITLAB_CI_ICONS_DIR = path.join(__dirname, '..', 'assets', 'icons');
@@ -306,7 +307,10 @@ img { width: ${svgW}px; height: auto; display: block; }
 }
 
 /**
- * Extract all diagram blocks from markdown content
+ * Extract diagram blocks from markdown.
+ * A block is a diagram only when `<!-- diagram-name: ... -->` is the immediately
+ * previous line. A blank line, or no name, leaves the fence as source text.
+ * The fence language is the diagram type (Kroki, or a local renderer).
  */
 export function extractDiagrams(content: string): DiagramBlock[] {
   const diagrams: DiagramBlock[] = [];
@@ -314,60 +318,33 @@ export function extractDiagrams(content: string): DiagramBlock[] {
 
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i];
+    const nameMatch = lines[i].match(/<!--\s*diagram-name:\s*(.+?)\s*-->/);
+    const nextLine = lines[i + 1];
+    const codeBlockMatch = nextLine?.match(/^```([\w-]+)/);
 
-    // Look for diagram name comment
-    const nameMatch = line.match(/<!--\s*diagram-name:\s*(.+?)\s*-->/);
-    let diagramName = 'unknown';
-
-    if (nameMatch) {
-      diagramName = nameMatch[1].trim();
-      i++;
-      if (i >= lines.length) break;
-    }
-
-    // Look for code block with diagram type
-    const codeBlockMatch = lines[i].match(/^```([\w-]+)/);
-    if (codeBlockMatch) {
+    if (nameMatch && codeBlockMatch) {
+      const diagramName = nameMatch[1].trim();
       const type = codeBlockMatch[1].toLowerCase();
+      const startLine = i + 1;
+      i = startLine + 1;
 
-      if (SUPPORTED_DIAGRAM_TYPES.includes(type)) {
-        const startLine = i;
+      const diagramLines: string[] = [];
+      while (i < lines.length && !lines[i].startsWith('```')) {
+        diagramLines.push(lines[i]);
         i++;
-
-        // Collect diagram content until closing ```
-        const diagramLines: string[] = [];
-        while (i < lines.length && !lines[i].startsWith('```')) {
-          diagramLines.push(lines[i]);
-          i++;
-        }
-
-        const diagramContent = diagramLines.join('\n');
-
-        // Build original text (including name comment if present)
-        let originalText = '';
-        if (nameMatch) {
-          originalText = lines[startLine - 1] + '\n';
-        }
-        originalText += lines[startLine] + '\n' + diagramContent + '\n```';
-
-        // gitlab-ci / chart blocks default to a type-specific name when no diagram-name is provided
-        let effectiveName = diagramName;
-        if (!nameMatch && type === 'gitlab-ci') {
-          effectiveName = 'pipeline';
-        } else if (!nameMatch && type === 'chart') {
-          effectiveName = 'chart';
-        }
-
-        diagrams.push({
-          type: type as DiagramBlock['type'],
-          content: diagramContent,
-          name: effectiveName,
-          originalText
-        });
-
-        debug('Found %s diagram: %s', type, diagramName);
       }
+
+      const diagramContent = diagramLines.join('\n');
+      const originalText = lines[startLine - 1] + '\n' + lines[startLine] + '\n' + diagramContent + '\n```';
+
+      diagrams.push({
+        type,
+        content: diagramContent,
+        name: diagramName,
+        originalText
+      });
+
+      debug('Found %s diagram: %s', type, diagramName);
     }
 
     i++;
@@ -414,10 +391,11 @@ export async function generateDiagramImage(
 
   try {
     const normalizedContent = diagram.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const format = KROKI_SVG_TYPES.includes(diagram.type) ? 'svg' : 'png';
 
     // Use POST method to avoid URL length limits
     const krokiUrl = getKrokiUrl();
-    const url = `${krokiUrl}/${diagram.type}/png`;
+    const url = `${krokiUrl}/${diagram.type}/${format}`;
     debug('Requesting diagram from Kroki (POST): %s', url);
     debug('Diagram content length: %d bytes', normalizedContent.length);
 
@@ -444,9 +422,11 @@ export async function generateDiagramImage(
     }
 
     const response = await got(url, requestOptions);
+    const body = response.body as any;
+    const png = format === 'svg' ? await sharp(body).png().toBuffer() : body;
 
     // Post-process: add white background to PNG
-    const imageBuffer = await addWhiteBackground(response.body as any);
+    const imageBuffer = await addWhiteBackground(png);
 
     // Save image
     await fs.ensureDir(outputDir);

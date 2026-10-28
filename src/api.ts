@@ -1,5 +1,8 @@
+import os from 'node:os';
+import path from 'node:path';
 import Debug from 'debug';
 import got, { type Got, RequestError } from 'got';
+import fs from 'fs-extra';
 import { HttpsProxyAgent } from 'hpagent';
 import matter from 'gray-matter';
 import pThrottle from 'p-throttle';

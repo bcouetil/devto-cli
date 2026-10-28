@@ -273,11 +273,11 @@ All absolute image links will be left untouched, so you can choose to host your 
 
 #### Diagrams support
 
-The CLI automatically converts diagram code blocks into images.
+The CLI converts a fenced block into an image only when the previous line is a `diagram-name` comment. No comment, or a blank line between the comment and the fence, leaves the source in the article so dev.to shows the text.
 
-**Supported types via [Kroki](https://kroki.io):** mermaid, plantuml, graphviz, ditaa, blockdiag, svgbob — default server `https://kroki.io`, override with `KROKI_URL` in `.env` (e.g. `KROKI_URL=http://localhost:8000`). Mermaid needs Kroki's companion containers, not the gateway alone.
+The fence language is the [Kroki](https://kroki.io) diagram type (`mermaid`, `plantuml`, `graphviz`, `vega`, …). Default server `https://kroki.io`, override with `KROKI_URL` in `.env` (e.g. `KROKI_URL=http://localhost:8000`). Mermaid needs Kroki's companion containers, not the gateway alone. `vega` and `vegalite` are requested as SVG (Kroki's Vega PNG renderer needs a canvas the official image does not ship) and rasterized locally.
 
-**Supported types via local rendering:** gitlab-ci (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed), chart (C3.js bar/area charts — requires Google Chrome / Puppeteer)
+**Local rendering** (not Kroki): `gitlab-ci` (GitLab CI pipeline diagrams — requires `graphviz` and Google Chrome installed), `chart` (C3.js bar/area charts — requires Google Chrome / Puppeteer). Same `diagram-name` rule.
 
 > **Why is `gitlab-ci` rendered locally instead of via Kroki?**
 > The `gitlab-ci` block is a custom CSV format (not supported by Kroki), converted locally to Graphviz DOT. The generated DOT references local icon files (✅, ⚠️, ⚙️ status icons) that Kroki's server cannot access. Additionally, Chrome headless is required to render emojis in color — server-side SVG-to-PNG conversion (as Kroki does) produces monochrome or missing emojis.
@@ -287,7 +287,7 @@ The CLI automatically converts diagram code blocks into images.
 
 **Workflow:**
 
-1. Add a diagram with an optional name comment:
+1. Add a diagram. The name comment is required, on the line immediately above the fence:
 
 ````markdown
 <!-- diagram-name: my-flowchart -->

@@ -33,10 +33,9 @@ describe('gitlab-ci diagram extraction', () => {
     expect(diagrams[0].content).toContain('back-package');
   });
 
-  it('should default gitlab-ci block name to "pipeline" when no diagram-name is given', () => {
+  it('should leave a gitlab-ci block as text when no diagram-name is given', () => {
     const diagrams = extractDiagrams(ARTICLE_GCL_NO_NAME);
-    expect(diagrams).toHaveLength(1);
-    expect(diagrams[0].name).toBe('pipeline');
+    expect(diagrams).toHaveLength(0);
   });
 
   it('should include diagram-name comment in originalText', () => {
@@ -50,10 +49,21 @@ describe('gitlab-ci diagram extraction', () => {
     expect(diagrams).toHaveLength(0);
   });
 
-  it('should not default mermaid block name to "pipeline"', () => {
+  it('should leave a mermaid block as text when no diagram-name is given', () => {
     const diagrams = extractDiagrams('# Title\n\n```mermaid\ngraph TD\n  A --> B\n```');
+    expect(diagrams).toHaveLength(0);
+  });
+
+  it('should leave the block as text when a blank line follows diagram-name', () => {
+    const diagrams = extractDiagrams('# Title\n\n<!-- diagram-name: skipped -->\n\n```vega\n{}\n```');
+    expect(diagrams).toHaveLength(0);
+  });
+
+  it('should extract any fence language when diagram-name is the previous line', () => {
+    const diagrams = extractDiagrams('# Title\n\n<!-- diagram-name: dora -->\n```vega\n{}\n```');
     expect(diagrams).toHaveLength(1);
-    expect(diagrams[0].name).toBe('unknown');
+    expect(diagrams[0].type).toBe('vega');
+    expect(diagrams[0].name).toBe('dora');
   });
 });
 

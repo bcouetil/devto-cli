@@ -37,10 +37,9 @@ describe('chart diagram extraction', () => {
     expect(diagrams[0].content).toContain('Self-certainty');
   });
 
-  it('should default chart block name to "chart" when no diagram-name is given', () => {
+  it('should leave a chart block as text when no diagram-name is given', () => {
     const diagrams = extractDiagrams(ARTICLE_CHART_NO_NAME);
-    expect(diagrams).toHaveLength(1);
-    expect(diagrams[0].name).toBe('chart');
+    expect(diagrams).toHaveLength(0);
   });
 
   it('should include diagram-name comment in originalText', () => {

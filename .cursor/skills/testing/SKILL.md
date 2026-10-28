@@ -11,10 +11,12 @@ We can safely experiment on non published articles (the ones with no date in nam
 
 ## Articles path
 
+Own git repo. `reveal-js/articles` is only a symlink to it. Use this path.
+
 | OS      | Path                                                          |
 | ------- | ------------------------------------------------------------- |
 | Windows | `C:\Users\bc30a3al\workspaces\reveal-js\articles`             |
-| macOS   | `/Users/bcouetil/workspaces/zenika/reveal-js/articles`        |
+| macOS   | `/Users/bcouetil/workspaces/zenika/my-articles`               |
 
 ## Build
 ```bash

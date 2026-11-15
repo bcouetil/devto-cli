@@ -23,6 +23,8 @@ Own git repo. `reveal-js/articles` is only a symlink to it. Use this path.
 npx tsc
 ```
 
+`dev` on `PATH` is this repo via `npm link`. After `tsc`, `dev` runs `lib/` from here. `/opt/homebrew/bin/dev` is that link, not another install. Check with `realpath "$(which dev)"` (must end at this repo's `bin/devto.js`). If the link is missing, say so. Do not work around it with `node bin/devto.js` or a reinstall.
+
 ## Test push
 ```bash
 cd <Articles path>  # .env is there, necessary and picked-up automatically

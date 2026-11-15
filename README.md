@@ -128,7 +128,7 @@ dev rename --dry-run "*.md" # Preview changes without renaming
 
 `dev diaggen [files]` generates PNG images from diagram and chart code blocks using [Kroki](https://kroki.io) (or `KROKI_URL`) and local renderers for chart/gitlab-ci (default: `*.md`).
 
-Use `--no-cache` to regenerate images even when a cached PNG already exists (for example after changing chart rendering in the CLI).
+Images are cached by content checksum: an existing `{name}-{checksum}.png` is skipped and reported as up-to-date. Use `--no-cache` to regenerate anyway (for example after changing chart rendering in the CLI).
 
 See [Diagrams support](#diagrams-support) for complete workflow and supported diagram types.
 

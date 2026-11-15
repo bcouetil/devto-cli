@@ -34,8 +34,9 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
       console.log(chalk.blue(`Found ${articles.length} article(s), scanning for diagrams...\n`));
     }
 
-    let totalDiagrams = 0;
-    let processedArticles = 0;
+    let generated = 0;
+    let upToDate = 0;
+    let articlesWithDiagrams = 0;
 
     await pMap(
       articles,
@@ -46,21 +47,32 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
           const diagramMap = await generateDiagramsForArticle(article, {
             noCache: options.noCache
           });
-          const diagramCount = diagramMap.size;
+          const images = [...diagramMap.values()];
+          const fresh = images.filter(image => !image.cached);
+          const cached = images.filter(image => image.cached);
 
           spinner.stop();
 
-          if (diagramCount > 0) {
-            console.log(
-              chalk.green(`✓ ${article.file}: generated ${diagramCount} diagram image(s)`)
-            );
-            for (const imagePath of diagramMap.values()) {
-              console.log(chalk.green(`  → ${imagePath}`));
+          if (images.length === 0) {
+            if (articles.length > 1) {
+              console.log(chalk.gray(`- ${article.file}: no diagrams found`));
             }
-            totalDiagrams += diagramCount;
-            processedArticles++;
-          } else if (articles.length > 1) {
-            console.log(chalk.gray(`- ${article.file}: no diagrams found`));
+            return;
+          }
+
+          articlesWithDiagrams++;
+          generated += fresh.length;
+          upToDate += cached.length;
+
+          if (fresh.length === 0) {
+            console.log(chalk.gray(`· ${article.file}: ${cached.length} diagram image(s) up-to-date`));
+            return;
+          }
+
+          const suffix = cached.length > 0 ? chalk.gray(`, ${cached.length} up-to-date`) : '';
+          console.log(chalk.green(`✓ ${article.file}: generated ${fresh.length} diagram image(s)`) + suffix);
+          for (const image of fresh) {
+            console.log(chalk.green(`  → ${image.imagePath}`));
           }
         } catch (error) {
           spinner.stop();
@@ -71,15 +83,11 @@ export async function generateDiagrams(filesGlob?: string[], options: DiaggenOpt
       { concurrency: 5 }
     );
 
-    if (articles.length > 1) {
+    if (articles.length > 1 || articlesWithDiagrams > 0) {
       console.log();
-      if (totalDiagrams > 0) {
-        console.log(
-          chalk.green.bold(
-            `✓ Successfully generated ${totalDiagrams} diagram image(s) from ${processedArticles} article(s)`
-          )
-        );
-      } else {
+      if (generated + upToDate > 0) {
+        console.log(`Generated: ${chalk.green(generated)} | Up-to-date: ${chalk.gray(upToDate)}`);
+      } else if (articles.length > 1) {
         console.log(chalk.yellow('No diagrams found in any articles.'));
       }
     }

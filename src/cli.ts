@@ -58,6 +58,9 @@ export async function run(args: string[]) {
   const options = minimist(args, {
     string: ['token', 'repo', 'branch', 'output'],
     boolean: ['help', 'version', 'reconcile', 'dry-run', 'json', 'pull', 'skip-git', 'skip-check-images', 'verbose', 'update-toc', 'jpg', 'cache'],
+    // minimist defaults every boolean to false, which would make `cache === false`
+    // true on every run and disable the diagram cache unless --cache is passed.
+    default: { cache: true },
     alias: {
       v: 'version',
       e: 'reconcile',

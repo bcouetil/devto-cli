@@ -357,22 +357,27 @@ export type GenerateDiagramOptions = {
   noCache?: boolean;
 };
 
+export type DiagramImage = {
+  imagePath: string;
+  cached: boolean;
+};
+
 /**
- * Generate diagram image using a local renderer (chart, gitlab-ci) or Kroki
+ * Generate diagram image using a local renderer (chart, gitlab-ci) or Kroki.
+ * A PNG named `{name}-{checksum}.png` is reused without calling the renderer.
  */
 export async function generateDiagramImage(
   diagram: DiagramBlock,
   outputDir: string,
   options: GenerateDiagramOptions = {}
-): Promise<string> {
+): Promise<DiagramImage> {
   const checksum = calculateChecksum(diagram.content);
   const filename = `${diagram.name}-${checksum}.png`;
   const outputPath = path.join(outputDir, filename);
 
-  // Check if image already exists
   if (!options.noCache && (await fs.pathExists(outputPath))) {
     debug('Image already exists: %s', outputPath);
-    return outputPath;
+    return { imagePath: outputPath, cached: true };
   }
 
   await fs.ensureDir(outputDir);
@@ -380,13 +385,13 @@ export async function generateDiagramImage(
   // gitlab-ci: local rendering via dot binary
   if (diagram.type === 'gitlab-ci') {
     await generateGitlabCiImage(diagram, outputPath);
-    return outputPath;
+    return { imagePath: outputPath, cached: false };
   }
 
   // chart: local rendering via C3.js + Puppeteer
   if (diagram.type === 'chart') {
     await renderChartPNG(diagram.content, outputPath);
-    return outputPath;
+    return { imagePath: outputPath, cached: false };
   }
 
   try {
@@ -433,7 +438,7 @@ export async function generateDiagramImage(
     await fs.writeFile(outputPath, imageBuffer as any);
 
     debug('Generated diagram image: %s', outputPath);
-    return outputPath;
+    return { imagePath: outputPath, cached: false };
   } catch (error: any) {
     const status = error?.response?.statusCode;
     const rawBody = error?.response?.body;
@@ -456,7 +461,7 @@ export async function generateDiagramImage(
 export async function generateDiagramsForArticle(
   article: Article,
   options: GenerateDiagramOptions = {}
-): Promise<Map<string, string>> {
+): Promise<Map<string, DiagramImage>> {
   const diagrams = extractDiagrams(article.content);
 
   if (diagrams.length === 0) {
@@ -467,12 +472,12 @@ export async function generateDiagramsForArticle(
   const articleDir = article.file ? path.dirname(article.file) : '.';
   const outputDir = path.join(articleDir, 'images', 'diagrams');
 
-  const diagramMap = new Map<string, string>();
+  const diagramMap = new Map<string, DiagramImage>();
 
   for (const diagram of diagrams) {
     try {
-      const imagePath = await generateDiagramImage(diagram, outputDir, options);
-      diagramMap.set(diagram.originalText, imagePath);
+      const image = await generateDiagramImage(diagram, outputDir, options);
+      diagramMap.set(diagram.originalText, image);
     } catch (error) {
       debug('Error generating diagram: %s', error);
       throw error;

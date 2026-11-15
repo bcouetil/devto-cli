@@ -9,8 +9,20 @@ description: Guide for developing this CLI project. Use this when making code ch
 
 1. Make your changes in `src/`
 2. Compile: `npx tsc`
-3. ALWAYS Test using the `dev` CLI (see [TESTING.md](../../TESTING.md))
+3. ALWAYS Test using the `dev` CLI (see [testing](../testing/SKILL.md))
 4. **Update README.md** if you add/change commands or features
+
+## `dev` is this repo
+
+Install once with `npm link` (README Installation). That global `dev` is this workspace, not a separate published package.
+
+On this Mac the chain is:
+
+`/opt/homebrew/bin/dev` → `/opt/homebrew/lib/node_modules/@sinedied/devto-cli` → this repo
+
+`npx tsc` writes `lib/`. The next `dev` runs that build. A Homebrew path does not mean the binary is stale. Do not tell the user to reinstall, and do not substitute `node bin/devto.js`.
+
+Confirm with `realpath "$(which dev)"`. It must be this repo's `bin/devto.js`. If it is not, the link is missing — say so. Do not infer that from `which` alone.
 
 ## CLI Output Guidelines
 
